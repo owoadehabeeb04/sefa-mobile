@@ -1,4 +1,4 @@
-export type BankSyncStatus = 'active' | 'paused' | 'error' | 'disconnected' | 'reauth_required';
+export type BankSyncStatus = 'active' | 'syncing' | 'paused' | 'error' | 'disconnected' | 'reauth_required';
 
 export interface BankConnection {
   id: string;

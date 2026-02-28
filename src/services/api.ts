@@ -6,6 +6,26 @@ import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'ax
 import * as SecureStore from 'expo-secure-store';
 import { API_CONFIG } from '../config/api';
 
+const GENERIC_ERROR_MESSAGE = 'An error occurred';
+
+const toUserSafeError = (error: unknown): Error => {
+  if (axios.isAxiosError(error)) {
+    const safeError = new Error(GENERIC_ERROR_MESSAGE) as Error & {
+      status?: number;
+      code?: string;
+      original?: AxiosError;
+    };
+
+    safeError.status = error.response?.status;
+    safeError.code = error.code;
+    safeError.original = error;
+
+    return safeError;
+  }
+
+  return new Error(GENERIC_ERROR_MESSAGE);
+};
+
 // Create axios instance
 const api: AxiosInstance = axios.create({
   baseURL: API_CONFIG.BASE_URL,
@@ -131,11 +151,11 @@ api.interceptors.response.use(
       } catch (refreshError) {
         // Refresh failed - clear tokens and redirect to login
         await clearTokens();
-        return Promise.reject(refreshError);
+        return Promise.reject(toUserSafeError(refreshError));
       }
     }
 
-    return Promise.reject(error);
+    return Promise.reject(toUserSafeError(error));
   }
 );
 

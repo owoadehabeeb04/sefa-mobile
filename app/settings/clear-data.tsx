@@ -141,7 +141,7 @@ export default function ClearDataScreen() {
           style={{ backgroundColor: colors.primaryBackground }}
         >
           <Text className="text-sm" style={{ color: colors.textSecondary }}>
-            💡 Tip: Export your data before clearing if you want to keep a backup.
+             Tip: Export your data before clearing if you want to keep a backup.
           </Text>
         </View>
 

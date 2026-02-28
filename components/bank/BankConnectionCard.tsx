@@ -9,6 +9,7 @@ interface BankConnectionCardProps {
   onSync?: () => void;
   onToggleAutoSync?: (enabled: boolean) => void;
   onDisconnect?: () => void;
+  onViewDetails?: () => void;
   isSyncing?: boolean;
   isUpdating?: boolean;
 }
@@ -43,9 +44,16 @@ const formatRelativeTime = (value: string) => {
   return `${Math.floor(diff / day)}d ago`;
 };
 
-const getStatusStyle = (status?: string) => {
+const getStatusStyle = (status?: string, lastSyncAt?: string) => {
   const colors = Colors.light;
+
+  if (status === 'error' && !lastSyncAt) {
+    return { label: 'Pending Sync', color: colors.warning };
+  }
+
   switch (status) {
+    case 'syncing':
+      return { label: 'Syncing', color: colors.primary };
     case 'active':
       return { label: 'Active', color: colors.success };
     case 'error':
@@ -66,17 +74,24 @@ export const BankConnectionCard: React.FC<BankConnectionCardProps> = ({
   onSync,
   onToggleAutoSync,
   onDisconnect,
+  onViewDetails,
   isSyncing,
   isUpdating,
 }) => {
   const colors = Colors.light;
-  const status = getStatusStyle(connection.syncStatus);
+  const status = getStatusStyle(connection.syncStatus, connection.lastSyncAt);
   const lastSync = connection.lastSyncAt
     ? formatRelativeTime(connection.lastSyncAt)
     : 'Never';
   const currencySymbol = getCurrencySymbol(connection.currency);
   const balance = `${currencySymbol}${(connection.balance ?? 0).toLocaleString()}`;
   const accountNumber = connection.maskedAccountNumber || connection.accountNumber || 'N/A';
+  const accountTail = accountNumber && accountNumber !== 'N/A' ? accountNumber.slice(-4) : '';
+  const institutionLabel =
+    connection.institutionName && connection.institutionName !== 'Unknown Bank'
+      ? connection.institutionName
+      : connection.accountName?.trim() || (accountTail ? `Account ••••${accountTail}` : 'Linked Account');
+  const syncLabel = lastSync === 'Never' ? 'Pending first sync' : lastSync;
 
   return (
     <View className="p-4 rounded-2xl mb-3" style={{ backgroundColor: colors.backgroundSecondary }}>
@@ -90,7 +105,7 @@ export const BankConnectionCard: React.FC<BankConnectionCardProps> = ({
           </View>
           <View className="flex-1">
             <Text className="text-base font-semibold" style={{ color: colors.text }}>
-              {connection.institutionName}
+              {institutionLabel}
             </Text>
             <Text className="text-xs" style={{ color: colors.textTertiary }}>
               {accountNumber}
@@ -113,18 +128,29 @@ export const BankConnectionCard: React.FC<BankConnectionCardProps> = ({
 
       <View className="flex-row items-center justify-between mt-3">
         <Text className="text-xs" style={{ color: colors.textTertiary }}>
-          Last synced: {lastSync}
+          Last synced: {syncLabel}
         </Text>
-        <TouchableOpacity
-          className="px-3 py-1 rounded-full"
-          style={{ backgroundColor: colors.primaryBackground }}
-          onPress={onSync}
-          disabled={isSyncing}
-        >
-          <Text className="text-xs font-semibold" style={{ color: colors.primary }}>
-            {isSyncing ? 'Syncing...' : 'Sync'}
-          </Text>
-        </TouchableOpacity>
+        <View className="flex-row items-center">
+          <TouchableOpacity
+            className="px-3 py-1 rounded-full mr-2"
+            style={{ backgroundColor: colors.background }}
+            onPress={onViewDetails}
+          >
+            <Text className="text-xs font-semibold" style={{ color: colors.textSecondary }}>
+              Details
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            className="px-3 py-1 rounded-full"
+            style={{ backgroundColor: colors.primaryBackground }}
+            onPress={onSync}
+            disabled={isSyncing}
+          >
+            <Text className="text-xs font-semibold" style={{ color: colors.primary }}>
+              {isSyncing ? 'Syncing...' : 'Sync'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View className="flex-row items-center justify-between mt-3">

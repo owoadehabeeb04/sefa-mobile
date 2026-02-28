@@ -145,6 +145,12 @@ export default function SettingsScreen() {
             subtitle="Connect and sync your bank accounts"
             onPress={() => router.push('/settings/bank-connections')}
           />
+          <SettingsItem
+            icon="pulse-outline"
+            title="Sync Activity"
+            subtitle="View sync status and history"
+            onPress={() => router.push('/settings/sync-history')}
+          />
         </View>
 
         <View className="mb-6">

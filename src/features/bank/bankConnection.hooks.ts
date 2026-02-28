@@ -18,6 +18,11 @@ export const useBankConnections = () => {
     queryKey: BANK_CONNECTIONS_QUERY_KEY,
     queryFn: getBankConnections,
     staleTime: 60 * 1000,
+    refetchInterval: (query) => {
+      const connections = query.state.data ?? [];
+      const hasActiveSync = connections.some((connection) => connection.syncStatus === 'syncing');
+      return hasActiveSync ? 5000 : false;
+    },
   });
 };
 

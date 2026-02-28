@@ -77,13 +77,13 @@ export default function NotificationsScreen() {
 
   const markAllRead = useMarkAllRead();
   const deleteNotification = useDeleteNotification();
-
+  console.log('Raw notification data:', data);
   // Flatten all pages into a single list
   const allNotifications = useMemo<AppNotification[]>(
     () => data?.pages.flatMap((p) => p.data.notifications) ?? [],
     [data],
   );
-
+console.log('All notifications:', allNotifications);
   const unreadCount = data?.pages[0]?.data.summary.unreadCount ?? 0;
   const groups = useMemo(() => groupNotificationsByDate(allNotifications), [allNotifications]);
 
@@ -195,6 +195,9 @@ export default function NotificationsScreen() {
         style={{ borderBottomColor: colors.border }}
       >
         <View className="flex-row items-center gap-2">
+          <TouchableOpacity onPress={() => router.back()} className="mr-2">
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
           <Text className="text-2xl font-bold" style={{ color: colors.text }}>
             Notifications
           </Text>

@@ -18,10 +18,20 @@ const QUERY_KEYS = {
  * Infinite-scroll notifications list
  */
 export function useNotifications(filters: Omit<NotificationFilters, 'page'> = {}) {
+  console.log('🔔 useNotifications hook called, filters:', filters);
   return useInfiniteQuery({
     queryKey: QUERY_KEYS.list(filters),
-    queryFn: ({ pageParam = 1 }) =>
-      notificationService.getNotifications({ ...filters, page: pageParam as number, limit: 20 }),
+    queryFn: async ({ pageParam = 1 }) => {
+      console.log('🔔 Fetching notifications page:', pageParam);
+      try {
+        const result = await notificationService.getNotifications({ ...filters, page: pageParam as number, limit: 20 });
+        console.log('🔔 Notifications result:', JSON.stringify(result, null, 2));
+        return result;
+      } catch (error: any) {
+        console.error('🔔 Notifications fetch ERROR:', error?.message, error?.response?.status, JSON.stringify(error?.response?.data));
+        throw error;
+      }
+    },
     getNextPageParam: (lastPage) => {
       const { page, hasMore } = lastPage.data.pagination;
       return hasMore ? page + 1 : undefined;

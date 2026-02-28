@@ -73,8 +73,10 @@ export default function TabLayout() {
       <Tabs.Screen name="add" />
       <Tabs.Screen name="transactions" />
       <Tabs.Screen name="insights" />
-      <Tabs.Screen name="notifications" />
       <Tabs.Screen name="settings" />
+      {/* Hidden routes – still navigable but not shown in tab bar */}
+      <Tabs.Screen name="notifications" options={{ href: null }} />
+      <Tabs.Screen name="notifications/[id]" options={{ href: null }} />
     </Tabs>
   );
 }

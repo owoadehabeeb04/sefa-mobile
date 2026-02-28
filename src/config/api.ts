@@ -74,6 +74,11 @@ export const API_ENDPOINTS = {
     ALL: '/sync/all',
     CONNECTION: '/sync/connections',
     CONNECTION_SETTINGS: '/sync/connections',
+    CONNECTION_STATUS: '/sync/connections',
+    CONNECTION_CANCEL: '/sync/connections',
+    HISTORY: '/sync/history',
+    STATS: '/sync/stats',
+    RETRY: '/sync/retry',
   },
 
   // Notifications

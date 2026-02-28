@@ -54,8 +54,8 @@ export default function BudgetSettingsScreen() {
       return;
     }
 
-    if (budget > 10000000) {
-      setToastMessage('Budget cannot exceed ₦10,000,000');
+    if (budget > 50000000) {
+      setToastMessage('Budget cannot exceed ₦50,000,000');
       setToastType('error');
       setShowToast(true);
       return;

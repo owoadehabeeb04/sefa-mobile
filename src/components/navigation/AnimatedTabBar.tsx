@@ -15,9 +15,10 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useUnreadCount } from '@/features/notifications/notification.hooks';
+// Badge removed — notifications is no longer a tab
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const VISIBLE_TAB_NAMES = ['index', 'add', 'transactions', 'insights', 'settings'] as const;
 
 export function AnimatedTabBar({
   state,
@@ -26,23 +27,30 @@ export function AnimatedTabBar({
 }: BottomTabBarProps) {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
-  const tabWidth = SCREEN_WIDTH / state.routes.length;
 
-  // Unread notification badge
-  const { data: unreadCount = 0 } = useUnreadCount();
+  // Render only the primary 5 tabs regardless of hidden nested routes
+  const visibleRoutes = VISIBLE_TAB_NAMES
+    .map((name) => state.routes.find((route) => route.name === name))
+    .filter((route): route is typeof state.routes[number] => Boolean(route));
+
+  const visibleIndexMap = new Map(visibleRoutes.map((r, i) => [r.key, i]));
+  const focusedVisibleIndex = visibleIndexMap.get(state.routes[state.index]?.key) ?? 0;
+  const tabWidth = SCREEN_WIDTH / Math.max(visibleRoutes.length, 1);
+
+
 
   // Animated value for sliding indicator
   const slideAnim = useSharedValue(0);
 
   useEffect(() => {
     // Animate to new position with smooth spring
-    slideAnim.value = withSpring(state.index * tabWidth, {
+    slideAnim.value = withSpring(focusedVisibleIndex * tabWidth, {
       damping: 18,
       stiffness: 180,
       mass: 0.5,
       overshootClamping: false,
     });
-  }, [state.index, tabWidth]);
+  }, [focusedVisibleIndex, tabWidth]);
 
   const getIconName = (routeName: string, focused: boolean): string => {
     const icons: Record<string, { focused: string; unfocused: string }> = {
@@ -115,9 +123,9 @@ export function AnimatedTabBar({
 
         {/* Tab Buttons */}
         <View className="flex-row items-center justify-around pt-2 pb-1">
-          {state.routes.map((route, index) => {
+          {visibleRoutes.map((route, index) => {
             const { options } = descriptors[route.key];
-            const isFocused = state.index === index;
+            const isFocused = focusedVisibleIndex === index;
 
             const onPress = () => {
               const event = navigation.emit({
@@ -141,8 +149,7 @@ export function AnimatedTabBar({
             const iconName = getIconName(route.name, isFocused);
             const label = getLabel(route.name);
             const isAddButton = route.name === 'add';
-            const isNotificationsTab = route.name === 'notifications';
-            const badgeCount = isNotificationsTab ? unreadCount : 0;
+
 
             return (
               <Pressable
@@ -168,26 +175,7 @@ export function AnimatedTabBar({
                         size={isAddButton ? 26 : 22}
                         color={isFocused ? colors.primary : colors.tabIconDefault}
                       />
-                      {badgeCount > 0 && (
-                        <View
-                          style={{
-                            position: 'absolute',
-                            top: -4,
-                            right: -6,
-                            backgroundColor: '#DC2626',
-                            borderRadius: 8,
-                            minWidth: 16,
-                            height: 16,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            paddingHorizontal: 3,
-                          }}
-                        >
-                          <Text style={{ color: 'white', fontSize: 9, fontWeight: '700' }}>
-                            {badgeCount > 99 ? '99+' : badgeCount}
-                          </Text>
-                        </View>
-                      )}
+
                     </View>
                   </View>
 

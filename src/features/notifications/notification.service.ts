@@ -24,6 +24,7 @@ export const notificationService = {
       : API_ENDPOINTS.NOTIFICATIONS.LIST;
 
     const response = await api.get<NotificationsResponse>(url);
+    console.log('[NotificationService] getNotifications response:', JSON.stringify(response.data, null, 2));
     return response.data;
   },
 
@@ -34,6 +35,7 @@ export const notificationService = {
     const response = await api.get<UnreadCountResponse>(
       API_ENDPOINTS.NOTIFICATIONS.UNREAD_COUNT,
     );
+    console.log('[NotificationService] unreadCount response:', JSON.stringify(response.data, null, 2));
     return response.data.data.count;
   },
 

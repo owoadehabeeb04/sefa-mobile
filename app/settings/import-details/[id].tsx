@@ -2,7 +2,7 @@
  * Import Details Screen
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,7 +30,7 @@ export default function ImportDetailsScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const { data: job, isLoading } = useImportJob(id || '');
+  const { data: job, isLoading, refetch } = useImportJob(id || '');
   const undoImport = useUndoImport();
 
   const [showToast, setShowToast] = useState(false);
@@ -43,6 +43,18 @@ export default function ImportDetailsScreen() {
     if (!job.retentionExpiresAt) return true;
     return new Date() < new Date(job.retentionExpiresAt);
   }, [job]);
+
+  useEffect(() => {
+    if (!job) return;
+    const isActive = job.status === 'pending' || job.status === 'processing';
+    if (!isActive) return;
+
+    const intervalId = setInterval(() => {
+      refetch();
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [job, refetch]);
 
   const handleUndo = () => {
     if (!job) return;

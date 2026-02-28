@@ -12,6 +12,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth.store';
 import { useDashboardSummary } from '@/features/dashboard/dashboard.hooks';
+import { useUnreadCount } from '@/features/notifications/notification.hooks';
 import { DashboardSkeleton } from '@/components/dashboard/DashboardSkeleton';
 import { SummaryCard } from '@/components/dashboard/SummaryCard';
 import { BudgetAlertCard } from '@/components/dashboard/BudgetAlertCard';
@@ -27,6 +28,7 @@ export default function DashboardScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const { clearAuth, user } = useAuthStore();
+  const { data: unreadCount = 0 } = useUnreadCount();
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [startDate, setStartDate] = useState<string | undefined>();
   const [endDate, setEndDate] = useState<string | undefined>();
@@ -120,14 +122,31 @@ export default function DashboardScreen() {
             </View>
             <View className="flex-row items-center gap-2">
               <TouchableOpacity
-                onPress={() => {
-                  // TODO: Navigate to notifications
-                  Alert.alert('Notifications', 'Notification feature coming soon!');
-                }}
+                onPress={() => router.push('/(tabs)/notifications')}
                 className="w-10 h-10 rounded-full items-center justify-center"
                 style={{ backgroundColor: colors.backgroundSecondary }}
               >
                 <Ionicons name="notifications-outline" size={22} color={colors.textSecondary} />
+                {unreadCount > 0 && (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: 2,
+                      right: 2,
+                      backgroundColor: '#DC2626',
+                      borderRadius: 8,
+                      minWidth: 16,
+                      height: 16,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      paddingHorizontal: 3,
+                    }}
+                  >
+                    <Text style={{ color: 'white', fontSize: 9, fontWeight: '700' }}>
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Text>
+                  </View>
+                )}
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {

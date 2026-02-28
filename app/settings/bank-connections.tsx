@@ -45,6 +45,25 @@ export default function BankConnectionsScreen() {
   const [showToast, setShowToast] = useState(false);
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
+  const openMonoWidget = () => {
+    if (!user?.id) {
+      setToastMessage('Unable to connect bank right now. Please log out and log in again.');
+      setToastType('error');
+      setShowToast(true);
+      return;
+    }
+
+    const monoPublicKey = (process.env.EXPO_PUBLIC_MONO_PUBLIC_KEY || '').trim();
+    if (!monoPublicKey) {
+      setToastMessage('Mono key missing in mobile env. Add EXPO_PUBLIC_MONO_PUBLIC_KEY and restart Expo.');
+      setToastType('error');
+      setShowToast(true);
+      return;
+    }
+
+    setShowMono(true);
+  };
+
   const handleMonoSuccess = async (code: string) => {
     setShowMono(false);
     try {
@@ -62,12 +81,20 @@ export default function BankConnectionsScreen() {
   const handleSync = async (connection: BankConnection) => {
     try {
       await syncConnection.mutateAsync(connection.id);
-      setToastMessage('Sync started');
+      await refetch();
+      setToastMessage('Sync requested. It continues in the background.');
       setToastType('success');
       setShowToast(true);
     } catch (error: any) {
-      setToastMessage(error?.message || 'Failed to sync connection');
-      setToastType('error');
+      const message = String(error?.message || '');
+      const isAlreadySyncing = message.includes('409') || message.toLowerCase().includes('already in progress');
+
+      setToastMessage(
+        isAlreadySyncing
+          ? 'This account is already syncing in the background.'
+          : (error?.message || 'Failed to sync connection')
+      );
+      setToastType(isAlreadySyncing ? 'success' : 'error');
       setShowToast(true);
     }
   };
@@ -112,7 +139,8 @@ export default function BankConnectionsScreen() {
   };
 
   const isSyncingConnection = (connectionId: string) =>
-    syncConnection.isPending && syncConnection.variables === connectionId;
+    (syncConnection.isPending && syncConnection.variables === connectionId) ||
+    (connections ?? []).some((connection) => connection.id === connectionId && connection.syncStatus === 'syncing');
 
   const isUpdatingConnection = (connectionId: string) =>
     updateSettings.isPending && updateSettings.variables?.connectionId === connectionId;
@@ -131,15 +159,26 @@ export default function BankConnectionsScreen() {
         <Text className="text-xl font-bold flex-1" style={{ color: colors.text }}>
           Bank Connections
         </Text>
-        <TouchableOpacity
-          onPress={() => setShowMono(true)}
-          className="px-3 py-1 rounded-full"
-          style={{ backgroundColor: colors.primary }}
-        >
-          <Text className="text-xs font-semibold" style={{ color: colors.textInverse }}>
-            Connect
-          </Text>
-        </TouchableOpacity>
+        <View className="flex-row items-center">
+          <TouchableOpacity
+            onPress={() => router.push('/settings/sync-history')}
+            className="px-3 py-1 rounded-full mr-2"
+            style={{ backgroundColor: colors.backgroundSecondary }}
+          >
+            <Text className="text-xs font-semibold" style={{ color: colors.textSecondary }}>
+              Activity
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={openMonoWidget}
+            className="px-3 py-1 rounded-full"
+            style={{ backgroundColor: colors.primary }}
+          >
+            <Text className="text-xs font-semibold" style={{ color: colors.textInverse }}>
+              Connect
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -184,7 +223,7 @@ export default function BankConnectionsScreen() {
               Connect your bank to start syncing transactions.
             </Text>
             <TouchableOpacity
-              onPress={() => setShowMono(true)}
+              onPress={openMonoWidget}
               className="mt-4 px-5 py-3 rounded-full"
               style={{ backgroundColor: colors.primary }}
             >
@@ -204,6 +243,7 @@ export default function BankConnectionsScreen() {
                 onSync={() => handleSync(connection)}
                 onToggleAutoSync={(enabled) => handleToggleAutoSync(connection, enabled)}
                 onDisconnect={() => handleDisconnect(connection)}
+                onViewDetails={() => router.push(`/settings/sync-details/${connection.id}`)}
                 isSyncing={isSyncingConnection(connection.id)}
                 isUpdating={isUpdatingConnection(connection.id)}
               />
@@ -217,7 +257,7 @@ export default function BankConnectionsScreen() {
         onSuccess={handleMonoSuccess}
         onClose={() => setShowMono(false)}
         customer={{
-          id: user?.id || 'unknown',
+          id: user?.id || '',
           email: user?.email,
           name: user?.name,
         }}
