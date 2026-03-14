@@ -243,8 +243,7 @@ export default function TransactionsScreen() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        {/* Header */}
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.background }}>
         <View className="px-6 pt-4 pb-3">
           <Text className="text-2xl font-bold" style={{ color: colors.text }}>
             Transactions

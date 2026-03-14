@@ -4,20 +4,27 @@
 
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import * as SecureStore from 'expo-secure-store';
-import { API_CONFIG } from '../config/api';
+import { API_CONFIG, API_BASE_URL_CANDIDATES } from '../config/api';
 
 const GENERIC_ERROR_MESSAGE = 'An error occurred';
 
 const toUserSafeError = (error: unknown): Error => {
   if (axios.isAxiosError(error)) {
-    const safeError = new Error(GENERIC_ERROR_MESSAGE) as Error & {
+    const serverMessage = error.response?.data?.error?.message
+      || error.response?.data?.message
+      || error.message
+      || GENERIC_ERROR_MESSAGE;
+
+    const safeError = new Error(serverMessage) as Error & {
       status?: number;
       code?: string;
+      response?: AxiosError['response'];
       original?: AxiosError;
     };
 
     safeError.status = error.response?.status;
     safeError.code = error.code;
+    safeError.response = error.response;
     safeError.original = error;
 
     return safeError;
@@ -38,6 +45,39 @@ const api: AxiosInstance = axios.create({
 // Token storage keys
 const TOKEN_KEY = 'auth_token';
 const REFRESH_TOKEN_KEY = 'auth_refresh_token';
+
+/**
+ * Discover the first reachable backend URL from the candidate list.
+ * Tries each candidate's /health endpoint with a short timeout.
+ * Updates the axios instance baseURL when a working one is found.
+ */
+let discoveryDone = false;
+export const discoverBaseURL = async (): Promise<string> => {
+  if (discoveryDone) return api.defaults.baseURL!;
+
+  for (const candidate of API_BASE_URL_CANDIDATES) {
+    // Health endpoint is at the root (strip /api/v1)
+    const root = candidate.replace(/\/api\/v1\/?$/, '');
+    try {
+      await axios.get(`${root}/health`, { timeout: 3000 });
+      api.defaults.baseURL = candidate;
+      API_CONFIG.BASE_URL = candidate;
+      discoveryDone = true;
+      console.log(`✅ API connected: ${candidate}`);
+      return candidate;
+    } catch {
+      console.log(`⏭️  ${candidate} unreachable, trying next...`);
+    }
+  }
+
+  // None reachable — keep the first candidate so requests at least attempt something
+  discoveryDone = true;
+  console.warn('⚠️ No backend reachable, using default:', api.defaults.baseURL);
+  return api.defaults.baseURL!;
+};
+
+// Kick off discovery immediately and store the promise
+const discoveryPromise = discoverBaseURL();
 
 /**
  * Get stored access token
@@ -96,9 +136,13 @@ export const clearTokens = async (): Promise<void> => {
   }
 };
 
-// Request interceptor - Add token to requests
+// Request interceptor - Ensure discovery is done, then add token
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
+    // Wait for URL discovery before any request
+    await discoveryPromise;
+    config.baseURL = API_CONFIG.BASE_URL;
+
     const token = await getStoredToken();
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;

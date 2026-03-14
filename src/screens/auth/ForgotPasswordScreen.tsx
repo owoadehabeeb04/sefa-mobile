@@ -15,6 +15,7 @@ import { useForgotPassword } from '@/features/auth/auth.hooks';
 import { validateEmail } from '@/utils/validators';
 import { Ionicons } from '@expo/vector-icons';
 import { sefaLogoSvg } from '@/assets/illustrations';
+import axios from 'axios';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -55,6 +56,7 @@ export default function ForgotPasswordScreen() {
       });
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { error?: { message?: string } } } };
+      console.log('axios error from server', axiosError)
       const errorMessage = axiosError?.response?.data?.error?.message || 'Failed to send OTP';
       setError(errorMessage);
       showToast(errorMessage, 'error');

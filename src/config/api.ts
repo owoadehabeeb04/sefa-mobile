@@ -2,8 +2,17 @@
  * API Configuration
  */
 
+// Candidate base URLs in priority order (first reachable one wins)
+export const API_BASE_URL_CANDIDATES = [
+  process.env.EXPO_PUBLIC_API_URL,          // .env override (highest priority)
+  'http://172.20.10.4:3000/api/v1',         // Hotspot IP
+  'http://192.168.181.103:3000/api/v1',     // Wi-Fi IP
+  'http://10.0.2.2:3000/api/v1',            // Android emulator
+  'http://localhost:3000/api/v1',            // iOS simulator / web
+].filter(Boolean) as string[];
+
 export const API_CONFIG = {
-  BASE_URL: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api/v1',
+  BASE_URL: API_BASE_URL_CANDIDATES[0] || 'http://localhost:3000/api/v1',
   TIMEOUT: 30000, // 30 seconds
 };
 

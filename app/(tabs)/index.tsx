@@ -59,7 +59,7 @@ export default function DashboardScreen() {
   // Error state
   if (isError && !isLoading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.background }}>
         <View className="flex-1 items-center justify-center px-6">
           <Ionicons name="alert-circle-outline" size={64} color={colors.error} style={{ marginBottom: 16 }} />
           <Text className="text-xl font-bold mb-2 text-center" style={{ color: colors.text }}>
@@ -85,7 +85,7 @@ export default function DashboardScreen() {
   // Loading state
   if (isLoading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.background }}>
         <DashboardSkeleton />
       </SafeAreaView>
     );
@@ -95,7 +95,7 @@ export default function DashboardScreen() {
   const currency = dashboardData?.summary.currency === 'NGN' ? '₦' : dashboardData?.summary.currency || '₦';
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}

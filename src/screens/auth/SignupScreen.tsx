@@ -129,8 +129,8 @@ export default function SignupScreen() {
       }).start();
       showToast('OTP sent to your email', 'success');
     } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { error?: { message?: string; details?: any[] } } } };
-      console.error('❌ Registration error:', axiosError?.response?.data);
+      const axiosError = error as { response?: { data?: { error?: { message?: string; details?: any[] } } }; message?: string };
+      console.error('❌ Registration error:', axiosError?.response?.data ?? axiosError?.message);
       
       // Show detailed validation errors if available
       if (axiosError?.response?.data?.error?.details) {
@@ -140,7 +140,7 @@ export default function SignupScreen() {
         showToast(validationErrors, 'error');
       } else {
         showToast(
-          axiosError?.response?.data?.error?.message || 'Registration failed. Please try again',
+          axiosError?.response?.data?.error?.message || axiosError?.message || 'Registration failed. Please try again',
           'error'
         );
       }
