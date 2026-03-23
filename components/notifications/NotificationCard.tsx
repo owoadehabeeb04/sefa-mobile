@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { formatDistanceToNowStrict } from 'date-fns';
 import type { AppNotification, NotificationIcon } from '@/features/notifications/notification.types';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -32,6 +33,24 @@ const formatAmount = (amount?: number): string => {
   return `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
 };
 
+const formatRelativeTime = (createdAt?: string, fallback?: string) => {
+  if (!createdAt) {
+    return fallback ?? 'Just now';
+  }
+
+  const created = new Date(createdAt);
+  if (Number.isNaN(created.getTime())) {
+    return fallback ?? 'Just now';
+  }
+
+  const diffMs = Date.now() - created.getTime();
+  if (diffMs < 60_000) {
+    return 'Just now';
+  }
+
+  return `${formatDistanceToNowStrict(created)} ago`;
+};
+
 export const NotificationCard: React.FC<NotificationCardProps> = ({
   notification,
   onPress,
@@ -39,9 +58,23 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({
 }) => {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
+  const [relativeTime, setRelativeTime] = useState(() =>
+    formatRelativeTime(notification.createdAt, notification.timeAgo),
+  );
 
   const iconConfig = ICON_MAP[notification.icon] ?? ICON_MAP.info;
   const isUnread = !notification.isRead;
+
+  useEffect(() => {
+    const updateRelativeTime = () => {
+      setRelativeTime(formatRelativeTime(notification.createdAt, notification.timeAgo));
+    };
+
+    updateRelativeTime();
+    const interval = setInterval(updateRelativeTime, 60_000);
+
+    return () => clearInterval(interval);
+  }, [notification.createdAt, notification.timeAgo]);
 
   return (
     <TouchableOpacity
@@ -133,7 +166,7 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({
                 style={{ backgroundColor: URGENCY_COLORS[notification.urgency] }}
               />
               <Text className="text-[10px]" style={{ color: colors.textSecondary }}>
-                {notification.timeAgo ?? 'Just now'}
+                {relativeTime}
               </Text>
             </View>
           </View>

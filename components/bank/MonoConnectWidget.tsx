@@ -81,6 +81,24 @@ const buildMonoHtml = (publicKey: string, customerPayload: { id?: string; email:
 </html>
 `;
 
+const isAllowedMonoUrl = (url?: string) => {
+  if (!url) return false;
+  if (url === 'about:blank') return true;
+
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    return (
+      host === 'connect.withmono.com' ||
+      host.endsWith('.withmono.com') ||
+      host === 'mono.co' ||
+      host.endsWith('.mono.co')
+    );
+  } catch {
+    return false;
+  }
+};
+
 export const MonoConnectWidget: React.FC<MonoConnectWidgetProps> = ({
   visible,
   onSuccess,
@@ -103,8 +121,8 @@ export const MonoConnectWidget: React.FC<MonoConnectWidgetProps> = ({
   const handleMessage = (event: WebViewMessageEvent) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
-      if (data.type === 'success' && data.code) {
-        onSuccess(data.code);
+      if (data.type === 'success' && typeof data.code === 'string' && data.code.trim()) {
+        onSuccess(data.code.trim());
       } else if (data.type === 'close') {
         onClose();
       } else if (data.type === 'widget_error') {
@@ -117,10 +135,6 @@ export const MonoConnectWidget: React.FC<MonoConnectWidgetProps> = ({
 
   const customerPayload = buildCustomerPayload(customer);
   const html = buildMonoHtml(publicKey, customerPayload);
-  const emailDomain = customerPayload.email.includes('@')
-    ? customerPayload.email.split('@')[1]
-    : 'invalid-email';
-  const keyPrefix = publicKey ? publicKey.slice(0, 7) : 'missing';
 
   if (!publicKey) {
     return (
@@ -189,8 +203,16 @@ export const MonoConnectWidget: React.FC<MonoConnectWidgetProps> = ({
           <WebView
             key={webViewKey}
             source={{ html }}
+            originWhitelist={['about:blank', 'https://*.withmono.com', 'https://*.mono.co']}
             onMessage={handleMessage}
             onLoadEnd={() => setLoading(false)}
+            onShouldStartLoadWithRequest={(request) => {
+              const allowed = isAllowedMonoUrl(request.url);
+              if (!allowed) {
+                setDebugStatus(`Blocked unexpected navigation: ${request.url}`);
+              }
+              return allowed;
+            }}
             onError={(event: { nativeEvent: { description?: string } }) => {
               setDebugStatus(`WebView error: ${event.nativeEvent.description || 'unknown error'}`);
             }}
@@ -203,6 +225,7 @@ export const MonoConnectWidget: React.FC<MonoConnectWidgetProps> = ({
             domStorageEnabled
             cacheEnabled={false}
             incognito
+            setSupportMultipleWindows={false}
             style={{ flex: 1 }}
           />
         </View>

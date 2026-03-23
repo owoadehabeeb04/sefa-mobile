@@ -8,6 +8,12 @@ import { API_ENDPOINTS } from '@/config/api';
 import { isFutureDate } from '@/utils/helpers';
 import type { Expense, ExpenseInput, ExpenseFilters, ExpenseResponse } from './expense.types';
 
+const validateExpenseAmount = (amount: number) => {
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error('Amount must be greater than ₦0.00');
+  }
+};
+
 function mapExpenseFromApi(exp: any): Expense {
   const cat = exp.category ?? exp.categoryId;
   const categoryId = typeof cat === 'string' ? cat : (cat?._id ?? cat?.id ?? exp.categoryId);
@@ -85,9 +91,7 @@ export const getExpenseById = async (expenseId: string): Promise<Expense | null>
  * Create a new expense
  */
 export const createExpense = async (input: ExpenseInput, userId: string): Promise<Expense> => {
-  if (input.amount <= 0 || input.amount > 10000000) {
-    throw new Error('Amount must be between ₦0.01 and ₦10,000,000');
-  }
+  validateExpenseAmount(input.amount);
 
   const response = await api.post(API_ENDPOINTS.EXPENSES.BASE, {
     categoryId: input.categoryId,
@@ -110,6 +114,10 @@ export const createExpense = async (input: ExpenseInput, userId: string): Promis
  * Update an expense
  */
 export const updateExpense = async (expenseId: string, input: Partial<ExpenseInput>): Promise<Expense> => {
+  if (input.amount !== undefined) {
+    validateExpenseAmount(input.amount);
+  }
+
   const response = await api.put(`${API_ENDPOINTS.TRANSACTIONS.BASE}/${expenseId}`, input);
   if (!response.data.success || !response.data.data?.transaction) {
     throw new Error(response.data?.message ?? 'Failed to update expense');

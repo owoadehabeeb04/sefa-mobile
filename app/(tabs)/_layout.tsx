@@ -1,8 +1,9 @@
 import { Tabs, Redirect } from 'expo-router';
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { NotificationResponse } from 'expo-notifications';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { AnimatedTabBar } from '@/components/navigation/AnimatedTabBar';
@@ -17,6 +18,25 @@ export default function TabLayout() {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useAuthStore();
   const { data: userData, isLoading: userLoading, isError } = useCurrentUser();
+  const handledNotificationResponseId = useRef<string | null>(null);
+
+  const navigateFromNotificationResponse = useCallback((response: NotificationResponse | null) => {
+    const responseId = response?.notification?.request?.identifier ?? null;
+    if (responseId && handledNotificationResponseId.current === responseId) {
+      return;
+    }
+
+    handledNotificationResponseId.current = responseId;
+    const data = response?.notification?.request?.content?.data as Record<string, any> | undefined;
+    const notificationId = typeof data?.notificationId === 'string' ? data.notificationId : null;
+
+    if (notificationId) {
+      router.push(`/(tabs)/notifications/${notificationId}` as any);
+      return;
+    }
+
+    router.push('/(tabs)/notifications');
+  }, [router]);
 
   // Guard: Redirect if not authenticated
   useEffect(() => {
@@ -50,6 +70,32 @@ export default function TabLayout() {
       });
     }
   }, [isAuthenticated, userData]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !userData?.data?.user) {
+      return;
+    }
+
+    let isMounted = true;
+
+    PushNotificationService.getLastNotificationResponse()
+      .then((response) => {
+        if (!isMounted || !response) return;
+        navigateFromNotificationResponse(response);
+      })
+      .catch(() => {
+        // Best effort only.
+      });
+
+    const subscription = PushNotificationService.addResponseListener((response) => {
+      navigateFromNotificationResponse(response);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.remove();
+    };
+  }, [isAuthenticated, navigateFromNotificationResponse, userData]);
 
   // Show nothing while checking auth status
   if (authLoading || userLoading) {

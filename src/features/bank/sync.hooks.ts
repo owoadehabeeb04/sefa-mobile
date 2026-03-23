@@ -3,18 +3,42 @@ import {
   cancelConnectionSync,
   clearSyncTransactions,
   getConnectionSyncStatus,
+  getSyncLogDetails,
   getSyncHistory,
   getSyncStats,
   retryFailedSyncs,
+  type ConnectionSyncStatusResponse,
   type SyncHistoryQuery,
+  type SyncLogDetailResponse,
 } from './sync.service';
+
+const getStatusRefetchInterval = (
+  payload?: ConnectionSyncStatusResponse['data'] | SyncLogDetailResponse['data']
+) => {
+  const status =
+    payload && 'status' in payload
+      ? payload.status
+      : payload && 'syncStatus' in payload
+        ? payload.syncStatus
+        : undefined;
+  return status === 'queued' || status === 'syncing' ? 5000 : false;
+};
 
 export const useConnectionSyncStatus = (connectionId: string) => {
   return useQuery({
     queryKey: ['sync-status', connectionId],
     queryFn: () => getConnectionSyncStatus(connectionId),
     enabled: Boolean(connectionId),
-    refetchInterval: 10000,
+    refetchInterval: (query) => getStatusRefetchInterval(query.state.data?.data),
+  });
+};
+
+export const useSyncLogDetails = (syncLogId: string) => {
+  return useQuery({
+    queryKey: ['sync-log', syncLogId],
+    queryFn: () => getSyncLogDetails(syncLogId),
+    enabled: Boolean(syncLogId),
+    refetchInterval: (query) => getStatusRefetchInterval(query.state.data?.data),
   });
 };
 
@@ -39,6 +63,7 @@ export const useCancelSync = () => {
     mutationFn: (connectionId: string) => cancelConnectionSync(connectionId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sync-status'] });
+      queryClient.invalidateQueries({ queryKey: ['sync-log'] });
       queryClient.invalidateQueries({ queryKey: ['sync-history'] });
       queryClient.invalidateQueries({ queryKey: ['bank-connections'] });
     },
@@ -65,6 +90,7 @@ export const useClearSyncTransactions = () => {
     mutationFn: (syncLogId: string) => clearSyncTransactions(syncLogId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sync-status'] });
+      queryClient.invalidateQueries({ queryKey: ['sync-log'] });
       queryClient.invalidateQueries({ queryKey: ['sync-history'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['bank-connections'] });

@@ -20,6 +20,7 @@ import { Toast } from '@/components/common/Toast';
 import { MonoConnectWidget } from '@/components/bank/MonoConnectWidget';
 import { BankConnectionCard } from '@/components/bank/BankConnectionCard';
 import {
+  isConnectionSyncActive,
   useBankConnections,
   useConnectBank,
   useDisconnectBank,
@@ -68,7 +69,7 @@ export default function BankConnectionsScreen() {
     setShowMono(false);
     try {
       await connectBank.mutateAsync(code);
-      setToastMessage('Bank connected successfully');
+      setToastMessage('Bank connected. Initial sync queued in the background.');
       setToastType('success');
       setShowToast(true);
     } catch (error: any) {
@@ -80,9 +81,13 @@ export default function BankConnectionsScreen() {
 
   const handleSync = async (connection: BankConnection) => {
     try {
-      await syncConnection.mutateAsync(connection.id);
+      const response = await syncConnection.mutateAsync(connection.id);
       await refetch();
-      setToastMessage('Sync requested. It continues in the background.');
+      setToastMessage(
+        response?.data?.status === 'syncing'
+          ? 'This account is already syncing in the background.'
+          : (response?.message || 'Sync queued. It continues in the background.'),
+      );
       setToastType('success');
       setShowToast(true);
     } catch (error: any) {
@@ -140,7 +145,7 @@ export default function BankConnectionsScreen() {
 
   const isSyncingConnection = (connectionId: string) =>
     (syncConnection.isPending && syncConnection.variables === connectionId) ||
-    (connections ?? []).some((connection) => connection.id === connectionId && connection.syncStatus === 'syncing');
+    (connections ?? []).some((connection) => connection.id === connectionId && isConnectionSyncActive(connection));
 
   const isUpdatingConnection = (connectionId: string) =>
     updateSettings.isPending && updateSettings.variables?.connectionId === connectionId;
@@ -243,7 +248,15 @@ export default function BankConnectionsScreen() {
                 onSync={() => handleSync(connection)}
                 onToggleAutoSync={(enabled) => handleToggleAutoSync(connection, enabled)}
                 onDisconnect={() => handleDisconnect(connection)}
-                onViewDetails={() => router.push(`/settings/sync-details/${connection.id}`)}
+                onViewDetails={() =>
+                  router.push({
+                    pathname: '/settings/sync-details/[id]',
+                    params: {
+                      id: connection.id,
+                      kind: 'connection',
+                    },
+                  })
+                }
                 isSyncing={isSyncingConnection(connection.id)}
                 isUpdating={isUpdatingConnection(connection.id)}
               />

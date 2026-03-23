@@ -3,7 +3,14 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  TextInput,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -23,6 +30,8 @@ export default function ImportStatementScreen() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
+  const [bankHint, setBankHint] = useState('');
+  const [accountNumberHint, setAccountNumberHint] = useState('');
 
   const fileLabel = useMemo(() => {
     if (!selectedFile) return 'No file selected';
@@ -51,18 +60,24 @@ export default function ImportStatementScreen() {
 
     try {
       const response = await uploadStatement.mutateAsync({
-        uri: selectedFile.uri,
-        name: selectedFile.name,
-        mimeType: selectedFile.mimeType || undefined,
+        file: {
+          uri: selectedFile.uri,
+          name: selectedFile.name,
+          mimeType: selectedFile.mimeType || undefined,
+        },
+        metadata: {
+          bankHint: bankHint.trim() || undefined,
+          accountNumberHint: accountNumberHint.replace(/\D+/g, '').slice(-4) || undefined,
+        },
       });
 
-      const jobId = response.data?.jobId;
+      const importJobId = response.data?.importJobId;
       setToastMessage('Statement uploaded successfully');
       setToastType('success');
       setShowToast(true);
 
-      if (jobId) {
-        router.push(`/settings/import-details/${jobId}`);
+      if (importJobId) {
+        router.push(`/settings/import-details/${importJobId}`);
       }
     } catch (error: any) {
       setToastMessage(error?.message || 'Failed to upload statement');
@@ -94,8 +109,8 @@ export default function ImportStatementScreen() {
           <View className="flex-row items-start">
             <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
             <Text className="text-sm ml-2 flex-1" style={{ color: colors.textSecondary }}>
-              Upload a CSV or PDF bank statement to import transactions. We will detect duplicates and
-              categorize automatically.
+              Upload a CSV or PDF statement to import transactions. If a PDF scan is messy, you can
+              add an optional bank hint and the last 4 account digits to improve detection.
             </Text>
           </View>
         </View>
@@ -120,6 +135,62 @@ export default function ImportStatementScreen() {
               Choose File
             </Text>
           </TouchableOpacity>
+        </View>
+
+        <View
+          className="p-5 rounded-2xl mb-4"
+          style={{ backgroundColor: colors.backgroundSecondary }}
+        >
+          <Text className="text-sm font-semibold" style={{ color: colors.text }}>
+            Optional import hints
+          </Text>
+          <Text className="text-xs mt-1" style={{ color: colors.textSecondary }}>
+            Use this only when the statement header is blurry or the bank name is hard to read.
+          </Text>
+
+          <View className="mt-4">
+            <Text className="text-xs mb-2" style={{ color: colors.textSecondary }}>
+              Bank hint
+            </Text>
+            <TextInput
+              value={bankHint}
+              onChangeText={setBankHint}
+              placeholder="e.g. OPay, GTBank, Access Bank"
+              placeholderTextColor={colors.textTertiary}
+              autoCapitalize="words"
+              className="px-4 py-3 rounded-xl"
+              style={{
+                backgroundColor: colors.background,
+                color: colors.text,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            />
+          </View>
+
+          <View className="mt-4">
+            <Text className="text-xs mb-2" style={{ color: colors.textSecondary }}>
+              Account last 4 digits
+            </Text>
+            <TextInput
+              value={accountNumberHint}
+              onChangeText={(value) => setAccountNumberHint(value.replace(/\D+/g, '').slice(-4))}
+              placeholder="1234"
+              placeholderTextColor={colors.textTertiary}
+              keyboardType="number-pad"
+              maxLength={4}
+              className="px-4 py-3 rounded-xl"
+              style={{
+                backgroundColor: colors.background,
+                color: colors.text,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            />
+            <Text className="text-xs mt-2" style={{ color: colors.textTertiary }}>
+              We only send the last 4 digits, never the full account number.
+            </Text>
+          </View>
         </View>
 
         <View className="mb-6">

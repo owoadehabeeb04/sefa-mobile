@@ -32,6 +32,14 @@ const getConnectionId = (item: any) => {
   return connection?._id;
 };
 
+const getStatusColor = (status: string | undefined) => {
+  if (status === 'completed') return colors.success;
+  if (status === 'partial_success') return colors.warning;
+  if (status === 'failed') return colors.error;
+  if (status === 'queued' || status === 'syncing') return colors.primary;
+  return colors.textTertiary;
+};
+
 export default function SyncHistoryScreen() {
   const router = useRouter();
   const syncHistory = useSyncHistory({ page: 1, limit: 20 });
@@ -109,19 +117,26 @@ export default function SyncHistoryScreen() {
 
         {historyItems.map((item: any) => {
           const connectionId = getConnectionId(item);
-          const statusColor = item.status === 'completed'
-            ? colors.success
-            : item.status === 'failed'
-              ? colors.error
-              : colors.warning;
+          const syncLogId = item.syncLogId || item._id;
+          const statusColor = getStatusColor(item.status);
 
           return (
             <TouchableOpacity
-              key={item._id}
+              key={syncLogId}
               className="p-4 rounded-2xl mb-3"
               style={{ backgroundColor: colors.backgroundSecondary }}
-              onPress={() => connectionId && router.push(`/settings/sync-details/${connectionId}`)}
-              disabled={!connectionId}
+              onPress={() =>
+                syncLogId &&
+                router.push({
+                  pathname: '/settings/sync-details/[id]',
+                  params: {
+                    id: syncLogId,
+                    kind: 'sync-log',
+                    connectionId: connectionId || '',
+                  },
+                })
+              }
+              disabled={!syncLogId}
             >
               <View className="flex-row items-center justify-between">
                 <Text className="text-base font-semibold" style={{ color: colors.text }}>
@@ -137,15 +152,18 @@ export default function SyncHistoryScreen() {
               <Text className="text-xs mt-1" style={{ color: colors.textTertiary }}>
                 {formatDateTime(item.startedAt)}
               </Text>
+              <Text className="text-xs mt-2" style={{ color: colors.textSecondary }}>
+                Trigger: {item.triggerSource || item.syncType || 'unknown'}
+              </Text>
               <View className="flex-row items-center justify-between mt-2">
                 <Text className="text-xs" style={{ color: colors.textSecondary }}>
-                  New: {item.results?.newTransactions ?? 0}
+                  Imported: {item.results?.importedCount ?? 0}
                 </Text>
                 <Text className="text-xs" style={{ color: colors.textSecondary }}>
-                  Duplicates: {item.results?.duplicates ?? 0}
+                  Duplicates: {item.results?.duplicateCount ?? 0}
                 </Text>
                 <Text className="text-xs" style={{ color: colors.textSecondary }}>
-                  Transfers: {item.results?.transfers ?? 0}
+                  Issues: {(item.results?.failedCount ?? 0) + (item.results?.skippedCount ?? 0)}
                 </Text>
               </View>
             </TouchableOpacity>

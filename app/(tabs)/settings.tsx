@@ -158,27 +158,6 @@ export default function SettingsScreen() {
             className="text-xs font-semibold mb-3 px-1"
             style={{ color: colors.textTertiary }}
           >
-            PREFERENCES
-          </Text>
-          <SettingsItem
-            icon="notifications-outline"
-            title="Notifications"
-            subtitle="Manage app notifications"
-            onPress={() => router.push('/settings/notifications')}
-          />
-          <SettingsItem
-            icon="options-outline"
-            title="Notification Preferences"
-            subtitle="Customize alerts and quiet hours"
-            onPress={() => router.push('/settings/notification-preferences')}
-          />
-        </View>
-
-        <View className="mb-6">
-          <Text
-            className="text-xs font-semibold mb-3 px-1"
-            style={{ color: colors.textTertiary }}
-          >
             SECURITY
           </Text>
           <SettingsItem
@@ -207,12 +186,6 @@ export default function SettingsScreen() {
             title="Import History"
             subtitle="Review past imports"
             onPress={() => router.push('/settings/import-history')}
-          />
-          <SettingsItem
-            icon="download-outline"
-            title="Export Data"
-            subtitle="Download your financial data"
-            onPress={() => router.push('/settings/export-data')}
           />
           <SettingsItem
             icon="trash-outline"

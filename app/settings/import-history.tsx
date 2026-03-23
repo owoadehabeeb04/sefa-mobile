@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useImportJobs } from '@/features/import/import.hooks';
-import type { ImportJob } from '@/features/import/import.types';
+import type { BankDetectionConfidence, ImportJob } from '@/features/import/import.types';
 
 const colors = Colors.light;
 
@@ -17,6 +17,8 @@ const getStatusColor = (status: string) => {
   switch (status) {
     case 'completed':
       return colors.success;
+    case 'queued':
+      return colors.warning;
     case 'processing':
       return colors.info;
     case 'failed':
@@ -25,6 +27,19 @@ const getStatusColor = (status: string) => {
       return colors.textTertiary;
     default:
       return colors.warning;
+  }
+};
+
+const getConfidenceLabel = (confidence?: BankDetectionConfidence) => {
+  switch (confidence) {
+    case 'high':
+      return 'High confidence';
+    case 'medium':
+      return 'Medium confidence';
+    case 'low':
+      return 'Low confidence';
+    default:
+      return 'Needs review';
   }
 };
 
@@ -51,47 +66,115 @@ const formatDate = (value?: string) => {
   });
 };
 
+const formatStage = (value?: string) => {
+  if (!value) return 'Queued';
+  return value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (match) => match.toUpperCase());
+};
+
+const StatusChip = ({ job }: { job: ImportJob }) => (
+  <View
+    className="flex-row items-center self-start px-3 py-1 rounded-full"
+    style={{ backgroundColor: `${getStatusColor(job.status)}18` }}
+  >
+    <View
+      className="w-2 h-2 rounded-full mr-2"
+      style={{ backgroundColor: getStatusColor(job.status) }}
+    />
+    <Text className="text-xs font-semibold capitalize" style={{ color: colors.textSecondary }}>
+      {job.status}
+    </Text>
+  </View>
+);
+
+const MetaChip = ({
+  label,
+  tint = colors.primaryBackground,
+}: {
+  label: string;
+  tint?: string;
+}) => (
+  <View className="px-3 py-1 rounded-full mr-2 mb-2" style={{ backgroundColor: tint }}>
+    <Text className="text-xs font-medium" style={{ color: colors.textSecondary }}>
+      {label}
+    </Text>
+  </View>
+);
+
+const Metric = ({ label, value }: { label: string; value: number }) => (
+  <View
+    className="rounded-2xl px-3 py-3 mb-2"
+    style={{ backgroundColor: colors.background, width: '48%' }}
+  >
+    <Text className="text-xs mb-1" style={{ color: colors.textTertiary }}>
+      {label}
+    </Text>
+    <Text className="text-base font-semibold" style={{ color: colors.text }}>
+      {value}
+    </Text>
+  </View>
+);
+
 const ImportJobCard = ({ job, onPress }: { job: ImportJob; onPress: () => void }) => {
-  const statusColor = getStatusColor(job.status);
+  const detectedBank =
+    job.detectedBankDisplayName ||
+    (job.detectedBank && job.detectedBank !== 'unknown' ? job.detectedBank : null);
+
   return (
     <TouchableOpacity
-      className="p-4 rounded-2xl mb-3"
+      className="p-4 rounded-3xl mb-3"
       style={{ backgroundColor: colors.backgroundSecondary }}
       onPress={onPress}
+      activeOpacity={0.88}
     >
-      <View className="flex-row items-center justify-between">
-        <View>
-          <Text className="text-base font-semibold" style={{ color: colors.text }}>
-            {getSourceLabel(job.source)}
-          </Text>
-          <Text className="text-xs mt-1" style={{ color: colors.textTertiary }}>
-            {job.fileName || 'Bank Import'}
-          </Text>
-        </View>
-        <View className="items-end">
-          <View className="flex-row items-center mb-1">
-            <View className="w-2 h-2 rounded-full mr-1" style={{ backgroundColor: statusColor }} />
-            <Text className="text-xs" style={{ color: colors.textTertiary }}>
-              {job.status}
-            </Text>
-          </View>
-          <Text className="text-xs" style={{ color: colors.textTertiary }}>
-            {formatDate(job.createdAt)}
-          </Text>
-        </View>
+      <View className="flex-row items-center justify-between mb-3">
+        <Text className="text-lg font-semibold" style={{ color: colors.text }}>
+          {getSourceLabel(job.source)}
+        </Text>
+        {job.needsReview && <MetaChip label="Review needed" tint="#FFF4E5" />}
       </View>
 
-      <View className="flex-row items-center justify-between mt-3">
-        <Text className="text-xs" style={{ color: colors.textSecondary }}>
-          Imported: {job.importedCount ?? 0}
-        </Text>
-        <Text className="text-xs" style={{ color: colors.textSecondary }}>
-          Duplicates: {job.duplicateCount ?? 0}
-        </Text>
-        <Text className="text-xs" style={{ color: colors.textSecondary }}>
-          Errors: {job.errorCount ?? 0}
+      <View className="flex-row items-center justify-between mb-3">
+        <StatusChip job={job} />
+        <Text className="text-xs ml-auto" style={{ color: colors.textTertiary }}>
+          {formatDate(job.completedAt || job.createdAt)}
         </Text>
       </View>
+
+      <Text
+        className="text-sm leading-5 mb-3"
+        numberOfLines={2}
+        style={{ color: colors.textSecondary }}
+      >
+        {job.fileName || 'Bank import'}
+      </Text>
+
+      <View className="flex-row flex-wrap mb-2">
+        {detectedBank && <MetaChip label={detectedBank} tint={colors.primaryBackground} />}
+        {job.bankDetectionConfidence && (
+          <MetaChip
+            label={getConfidenceLabel(job.bankDetectionConfidence)}
+            tint={job.needsReview ? '#FFF4E5' : colors.background}
+          />
+        )}
+        {job.ocrProvider && <MetaChip label={`OCR: ${job.ocrProvider}`} tint={colors.background} />}
+      </View>
+
+      <View className="flex-row flex-wrap justify-between mt-2">
+        <Metric label="Imported" value={job.importedCount ?? 0} />
+        <Metric label="Duplicates" value={job.duplicateCount ?? 0} />
+        <Metric label="Skipped" value={job.skippedCount ?? 0} />
+        <Metric label="Errors" value={job.errorCount ?? 0} />
+      </View>
+
+      {(job.status === 'queued' || job.status === 'processing') && (
+        <View className="mt-2 px-3 py-3 rounded-2xl" style={{ backgroundColor: colors.background }}>
+          <Text className="text-xs" style={{ color: colors.textSecondary }}>
+            {formatStage(job.stage)} • {job.progress ?? 0}%
+          </Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 };
@@ -105,7 +188,6 @@ export default function ImportHistoryScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Header */}
       <View
         className="flex-row items-center px-5 py-4 border-b"
         style={{ borderBottomColor: colors.border }}
@@ -136,8 +218,8 @@ export default function ImportHistoryScreen() {
             <Text className="text-base font-semibold mt-3" style={{ color: colors.text }}>
               No imports yet
             </Text>
-            <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
-              Upload a bank statement to get started.
+            <Text className="text-sm mt-1 text-center" style={{ color: colors.textSecondary }}>
+              Upload a bank statement to start tracking import quality and progress here.
             </Text>
             <TouchableOpacity
               onPress={() => router.push('/settings/import-statement')}

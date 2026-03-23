@@ -54,8 +54,8 @@ export const verifyEmail = async (data: VerifyEmailRequest): Promise<ApiResponse
 /**
  * Resend OTP for email verification
  */
-export const resendOTP = async (data: ResendOTPRequest): Promise<ApiResponse<{ message: string; otp?: string; expiresIn?: string }>> => {
-  const response = await api.post<ApiResponse<{ message: string; otp?: string; expiresIn?: string }>>(
+export const resendOTP = async (data: ResendOTPRequest): Promise<ApiResponse<{ message: string; expiresIn?: string }>> => {
+  const response = await api.post<ApiResponse<{ message: string; expiresIn?: string }>>(
     API_ENDPOINTS.AUTH.RESEND_OTP,
     data
   );
@@ -65,8 +65,8 @@ export const resendOTP = async (data: ResendOTPRequest): Promise<ApiResponse<{ m
 /**
  * Forgot password - Request OTP
  */
-export const forgotPassword = async (data: ForgotPasswordRequest): Promise<ApiResponse<{ message: string; otp?: string; expiresIn?: string }>> => {
-  const response = await api.post<ApiResponse<{ message: string; otp?: string; expiresIn?: string }>>(
+export const forgotPassword = async (data: ForgotPasswordRequest): Promise<ApiResponse<{ message: string; expiresIn?: string }>> => {
+  const response = await api.post<ApiResponse<{ message: string; expiresIn?: string }>>(
     API_ENDPOINTS.AUTH.FORGOT_PASSWORD,
     data
   );

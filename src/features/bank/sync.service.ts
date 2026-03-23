@@ -8,23 +8,31 @@ export interface SyncHistoryQuery {
   connectionId?: string;
 }
 
+export interface SyncResultsSummary {
+  totalFetched?: number;
+  importedCount?: number;
+  duplicateCount?: number;
+  skippedCount?: number;
+  failedCount?: number;
+  transferCount?: number;
+}
+
 export interface SyncHistoryItem {
   _id: string;
+  syncLogId?: string;
+  syncType?: string;
+  triggerSource?: string;
   connectionId?: {
     _id?: string;
     institutionName?: string;
     accountNumber?: string;
   } | string;
   status?: string;
+  phase?: string;
   startedAt?: string;
   completedAt?: string;
   duration?: number;
-  results?: {
-    totalFetched?: number;
-    newTransactions?: number;
-    duplicates?: number;
-    transfers?: number;
-  };
+  results?: SyncResultsSummary;
   error?: {
     message?: string;
   };
@@ -45,29 +53,77 @@ export interface ConnectionSyncStatusResponse {
   success: boolean;
   data: {
     connectionId: string;
+    currentSyncLogId?: string | null;
     institutionName?: string;
     syncStatus?: string;
+    phase?: string;
+    cancelRequested?: boolean;
     lastSyncAt?: string;
+    lastSuccessfulSyncAt?: string;
     nextSyncAt?: string;
     autoSync?: boolean;
     syncInterval?: number;
     errorMessage?: string;
+    lastErrorSummary?: string;
+    fetchedCount?: number;
+    importedCount?: number;
+    duplicateCount?: number;
+    skippedCount?: number;
+    failedCount?: number;
+    startedAt?: string;
+    finishedAt?: string;
     latestSync?: {
       syncLogId?: string;
       status?: string;
+      phase?: string;
       startedAt?: string;
       completedAt?: string;
       duration?: number;
-      results?: {
-        totalFetched?: number;
-        newTransactions?: number;
-        duplicates?: number;
-        transfers?: number;
-      };
+      cancelRequested?: boolean;
+      results?: SyncResultsSummary;
       error?: {
         message?: string;
       };
+      errorList?: {
+        externalId?: string;
+        stage?: string;
+        message?: string;
+      }[];
+      syncType?: string;
     } | null;
+  };
+}
+
+export interface SyncLogDetailResponse {
+  success: boolean;
+  data: {
+    _id: string;
+    syncLogId?: string;
+    syncType?: string;
+    triggerSource?: string;
+    status?: string;
+    phase?: string;
+    startedAt?: string;
+    completedAt?: string;
+    duration?: number;
+    cancelRequested?: boolean;
+    connectionId?: {
+      _id?: string;
+      institutionName?: string;
+      accountNumber?: string;
+      syncStatus?: string;
+      lastSyncAt?: string;
+      lastSuccessfulSyncAt?: string;
+    } | string;
+    results?: SyncResultsSummary;
+    error?: {
+      message?: string;
+    };
+      errorList?: {
+        externalId?: string;
+        stage?: string;
+        message?: string;
+      }[];
   };
 }
 
@@ -81,7 +137,7 @@ export interface SyncStatsResponse {
       successRate: string | number;
       totalTransactions: number;
     };
-    byConnection: Array<{
+    byConnection: {
       connectionId?: string;
       institutionName?: string;
       accountNumber?: string;
@@ -92,13 +148,20 @@ export interface SyncStatsResponse {
       transactions?: {
         total?: number;
       };
-    }>;
+    }[];
   };
 }
 
 export const getConnectionSyncStatus = async (connectionId: string): Promise<ConnectionSyncStatusResponse> => {
   const response = await api.get<ConnectionSyncStatusResponse>(
     `${API_ENDPOINTS.SYNC.CONNECTION_STATUS}/${connectionId}/status`
+  );
+  return response.data;
+};
+
+export const getSyncLogDetails = async (syncLogId: string): Promise<SyncLogDetailResponse> => {
+  const response = await api.get<SyncLogDetailResponse>(
+    `${API_ENDPOINTS.SYNC.LOGS}/${syncLogId}`
   );
   return response.data;
 };

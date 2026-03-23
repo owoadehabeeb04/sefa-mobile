@@ -4,7 +4,14 @@
 
 import api from '@/services/api';
 import { API_ENDPOINTS } from '@/config/api';
-import type { ImportHistoryResponse, ImportJob, ImportJobResponse, UploadResponse, UndoImportResponse } from './import.types';
+import type {
+  ImportHistoryResponse,
+  ImportJob,
+  ImportJobResponse,
+  UndoImportResponse,
+  UploadResponse,
+  UploadStatementPayload,
+} from './import.types';
 
 const mapImportJobFromApi = (job: any): ImportJob => ({
   id: job._id ?? job.id,
@@ -12,25 +19,42 @@ const mapImportJobFromApi = (job: any): ImportJob => ({
   status: job.status,
   stage: job.stage,
   progress: job.progress,
+  queueJobId: job.queueJobId,
   totalTransactions: job.totalTransactions,
+  sourceRecordCount: job.sourceRecordCount,
+  validRecordCount: job.validRecordCount,
   importedCount: job.importedCount,
   duplicateCount: job.duplicateCount,
   errorCount: job.errorCount,
-  errors: job.errors,
+  skippedCount: job.skippedCount,
+  errors: job.errors ?? job.errorMessages,
+  errorMessages: job.errorMessages ?? job.errors,
+  warnings: job.warnings,
   fileName: job.fileName,
   fileType: job.fileType,
   fileSize: job.fileSize,
+  detectedBank: job.detectedBank,
+  detectedBankDisplayName: job.detectedBankDisplayName,
+  bankDetectionConfidence: job.bankDetectionConfidence,
+  bankDetectionSource: job.bankDetectionSource,
+  bankHint: job.bankHint,
+  accountNumberHint: job.accountNumberHint,
+  parser: job.parser,
+  ocrProvider: job.ocrProvider,
+  qualityFlags: job.qualityFlags,
+  needsReview: job.needsReview,
+  statementDateRange: job.statementDateRange ?? job.dateRange,
   createdAt: job.createdAt,
   completedAt: job.completedAt,
   retentionExpiresAt: job.retentionExpiresAt,
   isUndone: job.isUndone,
-  dateRange: job.dateRange,
+  dateRange: job.statementDateRange ?? job.dateRange,
 });
 
-export const uploadStatement = async (
-  file: { uri: string; name: string; mimeType?: string },
-  metadata?: { bankName?: string; accountNumber?: string }
-): Promise<UploadResponse> => {
+export const uploadStatement = async ({
+  file,
+  metadata,
+}: UploadStatementPayload): Promise<UploadResponse> => {
   const formData = new FormData();
   formData.append('file', {
     uri: file.uri,
@@ -38,8 +62,10 @@ export const uploadStatement = async (
     type: file.mimeType || 'application/octet-stream',
   } as any);
 
-  if (metadata?.bankName) formData.append('bankName', metadata.bankName);
-  if (metadata?.accountNumber) formData.append('accountNumber', metadata.accountNumber);
+  if (metadata?.bankHint) formData.append('bankHint', metadata.bankHint);
+  if (metadata?.accountNumberHint) {
+    formData.append('accountNumberHint', metadata.accountNumberHint);
+  }
 
   const response = await api.post<UploadResponse>(API_ENDPOINTS.BANK.UPLOAD, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },

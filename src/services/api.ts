@@ -2,14 +2,14 @@
  * API Service - Axios instance with interceptors
  */
 
-import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig, isAxiosError } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { API_CONFIG, API_BASE_URL_CANDIDATES } from '../config/api';
 
 const GENERIC_ERROR_MESSAGE = 'An error occurred';
 
 const toUserSafeError = (error: unknown): Error => {
-  if (axios.isAxiosError(error)) {
+  if (isAxiosError(error)) {
     const serverMessage = error.response?.data?.error?.message
       || error.response?.data?.message
       || error.message

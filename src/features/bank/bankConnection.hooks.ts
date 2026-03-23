@@ -10,8 +10,11 @@ import {
   syncBankConnection,
   updateSyncSettings,
 } from './bankConnection.service';
+import type { BankConnection } from './bankConnection.types';
 
 export const BANK_CONNECTIONS_QUERY_KEY = ['bank-connections'];
+export const isConnectionSyncActive = (connection?: Pick<BankConnection, 'syncStatus'> | null) =>
+  connection?.syncStatus === 'queued' || connection?.syncStatus === 'syncing';
 
 export const useBankConnections = () => {
   return useQuery({
@@ -20,7 +23,7 @@ export const useBankConnections = () => {
     staleTime: 60 * 1000,
     refetchInterval: (query) => {
       const connections = query.state.data ?? [];
-      const hasActiveSync = connections.some((connection) => connection.syncStatus === 'syncing');
+      const hasActiveSync = connections.some((connection) => isConnectionSyncActive(connection));
       return hasActiveSync ? 5000 : false;
     },
   });
@@ -32,6 +35,7 @@ export const useConnectBank = () => {
     mutationFn: (code: string) => connectBankAccount(code),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BANK_CONNECTIONS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['sync-history'] });
     },
   });
 };
@@ -42,6 +46,7 @@ export const useSyncConnection = () => {
     mutationFn: (connectionId: string) => syncBankConnection(connectionId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BANK_CONNECTIONS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['sync-history'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
     },
   });

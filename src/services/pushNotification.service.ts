@@ -95,6 +95,10 @@ export const PushNotificationService = {
     return Notifications.addNotificationResponseReceivedListener(handler);
   },
 
+  getLastNotificationResponse: async (): Promise<Notifications.NotificationResponse | null> => {
+    return Notifications.getLastNotificationResponseAsync();
+  },
+
   /**
    * Clear the badge count.
    */

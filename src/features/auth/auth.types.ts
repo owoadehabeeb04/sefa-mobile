@@ -52,8 +52,7 @@ export interface AuthResponse {
   token: string;
   refreshToken: string;
   requiresVerification?: boolean;
-  otp?: string; // Only in development
-  expiresIn?: string; // Only in development
+  expiresIn?: string;
 }
 
 export interface ApiResponse<T> {

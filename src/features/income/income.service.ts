@@ -7,6 +7,20 @@ import api from '@/services/api';
 import { API_ENDPOINTS } from '@/config/api';
 import { isFutureDate } from '@/utils/helpers';
 import type { Income, IncomeInput, IncomeFilters, IncomeResponse } from './income.types';
+import {
+  INCOME_AMOUNT_TOO_LARGE_MESSAGE,
+  isSafeIncomeAmount,
+} from './income.constants';
+
+const validateIncomeAmount = (amount: number) => {
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error('Amount must be greater than ₦0.00');
+  }
+
+  if (!isSafeIncomeAmount(amount)) {
+    throw new Error(INCOME_AMOUNT_TOO_LARGE_MESSAGE);
+  }
+};
 
 function mapIncomeFromApi(inc: any): Income {
   const cat = inc.category ?? inc.categoryId;
@@ -86,9 +100,7 @@ export const getIncomeById = async (incomeId: string): Promise<Income | null> =>
  * Create a new income
  */
 export const createIncome = async (input: IncomeInput, userId: string): Promise<Income> => {
-  if (input.amount <= 0 || input.amount > 10000000) {
-    throw new Error('Amount must be between ₦0.01 and ₦10,000,000');
-  }
+  validateIncomeAmount(input.amount);
   if (!input.source?.trim()) {
     throw new Error('Income source is required');
   }
@@ -114,7 +126,18 @@ export const createIncome = async (input: IncomeInput, userId: string): Promise<
  * Update an income
  */
 export const updateIncome = async (incomeId: string, input: Partial<IncomeInput>): Promise<Income> => {
-  const response = await api.put(`${API_ENDPOINTS.TRANSACTIONS.BASE}/${incomeId}`, input);
+  if (input.amount !== undefined) {
+    validateIncomeAmount(input.amount);
+  }
+
+  if (input.source !== undefined && !input.source.trim()) {
+    throw new Error('Income source is required');
+  }
+
+  const response = await api.put(`${API_ENDPOINTS.TRANSACTIONS.BASE}/${incomeId}`, {
+    ...input,
+    source: input.source?.trim(),
+  });
   if (!response.data.success || !response.data.data?.transaction) {
     throw new Error(response.data?.message ?? 'Failed to update income');
   }

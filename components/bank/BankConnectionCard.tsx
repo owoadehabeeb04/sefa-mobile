@@ -47,13 +47,23 @@ const formatRelativeTime = (value: string) => {
 const getStatusStyle = (status?: string, lastSyncAt?: string) => {
   const colors = Colors.light;
 
-  if (status === 'error' && !lastSyncAt) {
+  if ((status === 'error' || status === 'failed') && !lastSyncAt) {
     return { label: 'Pending Sync', color: colors.warning };
   }
 
   switch (status) {
+    case 'queued':
+      return { label: 'Queued', color: colors.warning };
     case 'syncing':
       return { label: 'Syncing', color: colors.primary };
+    case 'completed':
+      return { label: 'Synced', color: colors.success };
+    case 'partial_success':
+      return { label: 'Partial', color: colors.warning };
+    case 'failed':
+      return { label: 'Failed', color: colors.error };
+    case 'cancelled':
+      return { label: 'Cancelled', color: colors.textTertiary };
     case 'active':
       return { label: 'Active', color: colors.success };
     case 'error':
@@ -80,8 +90,9 @@ export const BankConnectionCard: React.FC<BankConnectionCardProps> = ({
 }) => {
   const colors = Colors.light;
   const status = getStatusStyle(connection.syncStatus, connection.lastSyncAt);
-  const lastSync = connection.lastSyncAt
-    ? formatRelativeTime(connection.lastSyncAt)
+  const referenceSyncTime = connection.lastSuccessfulSyncAt || connection.lastSyncAt;
+  const lastSync = referenceSyncTime
+    ? formatRelativeTime(referenceSyncTime)
     : 'Never';
   const currencySymbol = getCurrencySymbol(connection.currency);
   const balance = `${currencySymbol}${(connection.balance ?? 0).toLocaleString()}`;
@@ -92,6 +103,7 @@ export const BankConnectionCard: React.FC<BankConnectionCardProps> = ({
       ? connection.institutionName
       : connection.accountName?.trim() || (accountTail ? `Account ••••${accountTail}` : 'Linked Account');
   const syncLabel = lastSync === 'Never' ? 'Pending first sync' : lastSync;
+  const isBusy = isSyncing || connection.syncStatus === 'queued' || connection.syncStatus === 'syncing';
 
   return (
     <View className="p-4 rounded-2xl mb-3" style={{ backgroundColor: colors.backgroundSecondary }}>
@@ -144,10 +156,10 @@ export const BankConnectionCard: React.FC<BankConnectionCardProps> = ({
             className="px-3 py-1 rounded-full"
             style={{ backgroundColor: colors.primaryBackground }}
             onPress={onSync}
-            disabled={isSyncing}
+            disabled={isBusy}
           >
             <Text className="text-xs font-semibold" style={{ color: colors.primary }}>
-              {isSyncing ? 'Syncing...' : 'Sync'}
+              {isBusy ? (connection.syncStatus === 'queued' ? 'Queued...' : 'Syncing...') : 'Sync'}
             </Text>
           </TouchableOpacity>
         </View>

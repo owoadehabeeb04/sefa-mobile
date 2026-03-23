@@ -26,12 +26,27 @@ import * as SecureStore from 'expo-secure-store';
 import { useCategories, useSyncCategories } from '@/features/categories/category.hooks';
 import { useCreateExpense, useUpdateExpense } from '@/features/expenses/expense.hooks';
 import { useCreateIncome, useUpdateIncome } from '@/features/income/income.hooks';
+import {
+  INCOME_AMOUNT_TOO_LARGE_MESSAGE,
+  MAX_SAFE_INCOME_AMOUNT,
+} from '@/features/income/income.constants';
 import type { ExpenseInput } from '@/features/expenses/expense.types';
 import type { IncomeInput } from '@/features/income/income.types';
 import type { PaymentMethod } from '@/features/expenses/expense.types';
 import type { Transaction } from '@/features/transactions/transaction.hooks';
 
 type TransactionType = 'expense' | 'income';
+
+const getResolvedTransactionType = (
+  transactionType: TransactionType,
+  editingTransaction: Transaction | null,
+) => {
+  if (!editingTransaction?.type) {
+    return transactionType;
+  }
+
+  return editingTransaction.type;
+};
 
 export default function AddTransactionScreen() {
   const router = useRouter();
@@ -54,9 +69,10 @@ export default function AddTransactionScreen() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
+  const resolvedTransactionType = getResolvedTransactionType(transactionType, editingTransaction);
 
   // Hooks
-  const { data: categories, isLoading: categoriesLoading } = useCategories(transactionType);
+  const { data: categories, isLoading: categoriesLoading } = useCategories(resolvedTransactionType);
   const syncCategories = useSyncCategories();
   const createExpense = useCreateExpense();
   const createIncome = useCreateIncome();
@@ -143,7 +159,7 @@ export default function AddTransactionScreen() {
     if (!isEditing) {
       setCategoryId('');
     }
-  }, [transactionType]);
+  }, [resolvedTransactionType, isEditing]);
 
   // Payment method options
   const paymentMethods = [
@@ -173,19 +189,21 @@ export default function AddTransactionScreen() {
   const validate = (): string | null => {
     const numAmount = Number(amount.replace(/,/g, ''));
     
-    if (!amount || numAmount <= 0) {
+    if (!amount || !Number.isFinite(numAmount) || numAmount <= 0) {
       return 'Please enter a valid amount';
     }
     
-    if (numAmount > 10000000) {
-      return 'Amount cannot exceed ₦10,000,000';
+    
+
+    if (resolvedTransactionType === 'income' && numAmount > MAX_SAFE_INCOME_AMOUNT) {
+      return INCOME_AMOUNT_TOO_LARGE_MESSAGE;
     }
     
     if (!categoryId) {
       return 'Please select a category';
     }
     
-    if (transactionType === 'income' && !source.trim()) {
+    if (resolvedTransactionType === 'income' && !source.trim()) {
       return 'Please enter an income source';
     }
     
@@ -229,7 +247,7 @@ export default function AddTransactionScreen() {
     const transactionDate = new Date(date).toISOString();
 
     try {
-      if (transactionType === 'expense') {
+      if (resolvedTransactionType === 'expense') {
         const expenseInput: Partial<ExpenseInput> = {
           amount: numAmount,
           categoryId,
@@ -358,18 +376,21 @@ export default function AddTransactionScreen() {
               style={{ backgroundColor: colors.backgroundSecondary }}
             >
               <TouchableOpacity
-                onPress={() => setTransactionType('expense')}
+                onPress={() => {
+                  setEditingTransaction(null);
+                  setTransactionType('expense');
+                }}
                 className="flex-1 py-3 rounded-xl items-center"
                 style={{
                   backgroundColor:
-                    transactionType === 'expense' ? colors.error : 'transparent',
+                    resolvedTransactionType === 'expense' ? colors.error : 'transparent',
                 }}
                 activeOpacity={0.7}
               >
                 <Text
                   className="text-sm font-semibold"
                   style={{
-                    color: transactionType === 'expense' ? '#FFFFFF' : colors.textSecondary,
+                    color: resolvedTransactionType === 'expense' ? '#FFFFFF' : colors.textSecondary,
                   }}
                 >
                   Expense
@@ -377,18 +398,21 @@ export default function AddTransactionScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => setTransactionType('income')}
+                onPress={() => {
+                  setEditingTransaction(null);
+                  setTransactionType('income');
+                }}
                 className="flex-1 py-3 rounded-xl items-center"
                 style={{
                   backgroundColor:
-                    transactionType === 'income' ? colors.success : 'transparent',
+                    resolvedTransactionType === 'income' ? colors.success : 'transparent',
                 }}
                 activeOpacity={0.7}
               >
                 <Text
                   className="text-sm font-semibold"
                   style={{
-                    color: transactionType === 'income' ? '#FFFFFF' : colors.textSecondary,
+                    color: resolvedTransactionType === 'income' ? '#FFFFFF' : colors.textSecondary,
                   }}
                 >
                   Income
@@ -443,7 +467,7 @@ export default function AddTransactionScreen() {
             </View>
 
             {/* Source (Income only) */}
-            {transactionType === 'income' && (
+            {resolvedTransactionType === 'income' && (
               <View>
                 <Text className="text-sm font-medium mb-2" style={{ color: colors.text }}>
                   Source *
@@ -529,7 +553,7 @@ export default function AddTransactionScreen() {
             </View>
 
             {/* Location (Expense only) */}
-            {transactionType === 'expense' && (
+            {resolvedTransactionType === 'expense' && (
               <View>
                 <Text className="text-sm font-medium mb-2" style={{ color: colors.text }}>
                   Location
@@ -560,7 +584,7 @@ export default function AddTransactionScreen() {
             >
               {isEditing 
                 ? 'Update Transaction'
-                : transactionType === 'expense' ? 'Add Expense' : 'Add Income'
+                : resolvedTransactionType === 'expense' ? 'Add Expense' : 'Add Income'
               }
             </Button>
           </View>

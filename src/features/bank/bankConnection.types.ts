@@ -1,4 +1,15 @@
-export type BankSyncStatus = 'active' | 'syncing' | 'paused' | 'error' | 'disconnected' | 'reauth_required';
+export type BankSyncStatus =
+  | 'active'
+  | 'queued'
+  | 'syncing'
+  | 'completed'
+  | 'partial_success'
+  | 'failed'
+  | 'cancelled'
+  | 'paused'
+  | 'error'
+  | 'disconnected'
+  | 'reauth_required';
 
 export interface BankConnection {
   id: string;
@@ -12,8 +23,12 @@ export interface BankConnection {
   balance?: number;
   autoSync?: boolean;
   syncStatus?: BankSyncStatus;
+  currentSyncLogId?: string;
   lastSyncAt?: string;
+  lastSuccessfulSyncAt?: string;
   nextSyncAt?: string;
+  lastSyncErrorSummary?: string;
+  pendingResync?: boolean;
   syncFrequency?: number;
   isPrimary?: boolean;
   createdAt?: string;
@@ -36,8 +51,9 @@ export interface BankConnectionResponse {
 export interface SyncJobResponse {
   success: boolean;
   data?: {
-    jobId?: string;
-    status?: string;
+    connectionId?: string;
+    syncLogId?: string;
+    status?: 'queued' | 'syncing';
   };
   message?: string;
 }
