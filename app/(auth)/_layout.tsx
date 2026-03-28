@@ -1,20 +1,23 @@
 import { Stack, Redirect } from 'expo-router';
 import { useAuthStore } from '@/store/auth.store';
 import { useCurrentUser } from '@/features/auth/auth.hooks';
+import { useOnboardingStatus } from '@/features/onboarding/onboarding.hooks';
+import { resolveAuthenticatedRoute } from '@/features/auth/auth-routing';
 
 export default function AuthLayout() {
   const { isAuthenticated, isLoading } = useAuthStore();
   const { data: userData, isLoading: userLoading } = useCurrentUser();
+  const { data: onboardingData, isLoading: onboardingLoading } = useOnboardingStatus();
 
   // If authenticated and verified and onboarding completed, redirect to tabs
-  if (!isLoading && !userLoading && isAuthenticated && userData?.data?.user) {
-    const user = userData.data.user;
-    if (user.isVerified && user.onboardingCompleted) {
-      return <Redirect href="/(tabs)" />;
-    }
-    // If verified but onboarding not completed, redirect to onboarding
-    if (user.isVerified && !user.onboardingCompleted) {
-      return <Redirect href="/(onboarding)/profile" />;
+  if (!isLoading && !userLoading && !onboardingLoading && isAuthenticated && userData?.data?.user) {
+    const destination = resolveAuthenticatedRoute(
+      userData.data.user,
+      onboardingData?.data || null
+    );
+
+    if (destination !== '/(auth)/verify-otp') {
+      return <Redirect href={destination} />;
     }
   }
 

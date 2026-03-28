@@ -1,122 +1,144 @@
 /**
- * Financial Profile Screen - Setup user's financial profile
+ * Onboarding setup screen
+ * Lets users optionally set a monthly budget and required consent.
  */
 
-import React, { useState } from 'react';
-import { View, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { SvgXml } from 'react-native-svg';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Input } from '@/src/components/common/Input';
-import { Select } from '@/src/components/common/Select';
 import { Button } from '@/src/components/common/Button';
 import { Loading } from '@/src/components/common/Loading';
 import { Toast, useToast } from '@/src/components/common/Toast';
-import { useSetupProfile } from '@/features/onboarding/onboarding.hooks';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  useCompleteOnboarding,
+  useOnboardingStatus,
+  useRecordConsent,
+} from '@/features/onboarding/onboarding.hooks';
+import { useBudget, useUpdateBudget } from '@/features/budget/budget.hooks';
 import { sefaLogoSvg } from '@/assets/illustrations';
 
-const incomeTypes = [
-  { value: 'salary', label: 'Salary' },
-  { value: 'business', label: 'Business' },
-  { value: 'freelance', label: 'Freelance' },
-  { value: 'mixed', label: 'Mixed' },
-  { value: 'other', label: 'Other' },
-] as const;
+const MAX_BUDGET = 50000000;
 
-const incomeFrequencies = [
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'bi-weekly', label: 'Bi-weekly' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'quarterly', label: 'Quarterly' },
-  { value: 'annually', label: 'Annually' },
-] as const;
+const formatAmount = (value: string) => {
+  const numericValue = value.replace(/[^0-9]/g, '');
+  if (!numericValue) return '';
+  return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+};
 
-export default function FinancialProfileScreen() {
+const parseBudget = (value: string) => {
+  const raw = value.replace(/,/g, '').trim();
+
+  if (!raw) {
+    return { amount: null, error: null };
+  }
+
+  const budget = Number(raw);
+
+  if (!Number.isFinite(budget) || budget <= 0) {
+    return { amount: null, error: 'Please enter a valid budget amount' };
+  }
+
+  if (budget > MAX_BUDGET) {
+    return { amount: null, error: 'Budget cannot exceed ₦50,000,000' };
+  }
+
+  return { amount: budget, error: null };
+};
+
+export default function OnboardingSetupScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const { toastConfig, showToast, hideToast } = useToast();
+  const { data: budgetData, isLoading: budgetLoading } = useBudget();
+  const { data: onboardingData } = useOnboardingStatus();
+  const updateBudgetMutation = useUpdateBudget();
+  const recordConsentMutation = useRecordConsent();
+  const completeOnboardingMutation = useCompleteOnboarding();
 
-  // Generate logo with primary color
+  const currentLimit = budgetData?.monthlyBudgetLimit ?? null;
+  const hasExistingBudget = currentLimit != null && currentLimit > 0;
+  const initialConsent = onboardingData?.data?.steps?.consentGiven ?? false;
+  const categoriesInitialized = onboardingData?.data?.steps?.categoriesInitialized ?? false;
+  const isSubmitting =
+    updateBudgetMutation.isPending
+    || recordConsentMutation.isPending
+    || completeOnboardingMutation.isPending;
+
+  const [monthlyBudget, setMonthlyBudget] = useState('');
+  const [consentGiven, setConsentGiven] = useState(initialConsent);
+
+  useEffect(() => {
+    if (hasExistingBudget && !monthlyBudget) {
+      setMonthlyBudget(currentLimit.toLocaleString('en-NG', { maximumFractionDigits: 0 }));
+    }
+  }, [currentLimit, hasExistingBudget, monthlyBudget]);
+
+  useEffect(() => {
+    if (initialConsent) {
+      setConsentGiven(true);
+    }
+  }, [initialConsent]);
+
   const getLogoSvg = (color: string) => {
     return sefaLogoSvg.replace('stroke="white"', `stroke="${color}"`);
   };
 
-  // Format number with thousand separators
-  const formatNumberWithCommas = (value: string): string => {
-    // Remove all non-numeric characters except decimal point
-    const numericValue = value.replace(/[^\d.]/g, '');
-    
-    // Split by decimal point
-    const parts = numericValue.split('.');
-    
-    // Add commas to the integer part
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    
-    // Return formatted value (limit to 2 decimal places if decimal exists)
-    return parts.length > 1 ? `${parts[0]}.${parts[1].slice(0, 2)}` : parts[0];
-  };
-
-  // Remove commas for API submission
-  const removeCommas = (value: string): string => {
-    return value.replace(/,/g, '');
-  };
-
-  const [incomeType, setIncomeType] = useState<'salary' | 'business' | 'freelance' | 'mixed' | 'other' | ''>('');
-  const [incomeFrequency, setIncomeFrequency] = useState<'weekly' | 'bi-weekly' | 'monthly' | 'quarterly' | 'annually' | ''>('');
-  const [averageIncome, setAverageIncome] = useState('');
-  const [goals, setGoals] = useState('');
-
-  // Handle income input with formatting
-  const handleIncomeChange = (value: string) => {
-    const formatted = formatNumberWithCommas(value);
-    setAverageIncome(formatted);
-  };
-
-  const setupProfileMutation = useSetupProfile();
-
-  const handleContinue = async () => {
-    if (!incomeType) {
-      showToast('Please select your income type', 'error');
+  const finishOnboarding = async ({ skipBudget = false }: { skipBudget?: boolean } = {}) => {
+    if (!consentGiven) {
+      showToast('Please accept the consent to continue', 'error');
       return;
     }
 
-    if (!incomeFrequency) {
-      showToast('Please select your income frequency', 'error');
+    const { amount, error } = parseBudget(monthlyBudget);
+
+    if (!skipBudget && error) {
+      showToast(error, 'error');
       return;
     }
-
-    const financialGoals = goals.trim() ? goals.split(',').map(g => g.trim()).filter(Boolean) : [];
 
     try {
-      const result = await setupProfileMutation.mutateAsync({
-        incomeType: incomeType as any,
-        incomeFrequency: incomeFrequency as any,
-        averageIncome: averageIncome ? parseFloat(removeCommas(averageIncome)) : undefined,
-        financialGoals: financialGoals.length > 0 ? financialGoals : undefined,
-      });
+      if (!skipBudget && amount != null) {
+        await updateBudgetMutation.mutateAsync(amount);
+      }
 
-      if (result.success) {
-        // Small delay to allow query invalidation to complete
-        setTimeout(() => {
-          router.push('/(onboarding)/consent');
-        }, 100);
+      if (!initialConsent || !categoriesInitialized) {
+        await recordConsentMutation.mutateAsync({ dataAnalysis: true });
+      }
+
+      const completeResult = await completeOnboardingMutation.mutateAsync();
+
+      if (completeResult.success) {
+        router.replace('/(tabs)');
       }
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to setup profile';
+      const errorMessage =
+        error?.response?.data?.message
+        || error?.message
+        || 'Failed to complete onboarding';
       showToast(errorMessage, 'error');
-      console.error('Setup profile error:', error);
     }
   };
 
   return (
-    <SafeAreaView className="flex-1" style={{ backgroundColor: colors.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1"
+        style={{ flex: 1 }}
       >
         <Toast
           visible={toastConfig.visible}
@@ -124,91 +146,251 @@ export default function FinancialProfileScreen() {
           type={toastConfig.type}
           onHide={hideToast}
         />
-        {setupProfileMutation.isPending && <Loading fullScreen message="Setting up your profile..." />}
+
+        {isSubmitting && <Loading fullScreen message="Finishing setup..." />}
 
         <ScrollView
-          className="flex-1"
-          contentContainerClassName="px-6"
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }}
           showsVerticalScrollIndicator={false}
         >
-        {/* Logo with SEFA Text */}
-        <View className="flex-row items-center pt-6 pb-6">
-          <SvgXml
-            xml={getLogoSvg(colors.primary)}
-            width={40}
-            height={42}
-          />
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 24, paddingBottom: 24 }}>
+            <SvgXml xml={getLogoSvg(colors.primary)} width={40} height={42} />
+            <Text
+              style={{
+                color: colors.primary,
+                fontSize: 28,
+                fontWeight: '700',
+                marginLeft: 12,
+                marginTop: 2,
+              }}
+            >
+              SEFA
+            </Text>
+          </View>
+
           <Text
-            className="text-2xl font-bold ml-3 mt-1"
-            style={{ color: colors.primary }}
+            style={{
+              color: colors.text,
+              fontSize: 30,
+              lineHeight: 38,
+              fontWeight: '700',
+              marginBottom: 10,
+            }}
           >
-            SEFA
+            Finish your setup
           </Text>
-        </View>
+          <Text
+            style={{
+              color: colors.textSecondary,
+              fontSize: 15,
+              lineHeight: 24,
+              marginBottom: 28,
+            }}
+          >
+            Add a monthly budget now if you want smarter spending guidance from the start. You can skip it and update it later in Settings.
+          </Text>
 
-        <Text
-          className="text-3xl font-bold mb-3"
-          style={{ color: colors.text }}
-        >
-          Financial Profile
-        </Text>
-        <Text
-          className="text-base mb-8 leading-6"
-          style={{ color: colors.textSecondary }}
-        >
-          Help us understand your financial situation to provide personalized insights
-        </Text>
+          <View
+            style={{
+              backgroundColor: colors.primaryBackground,
+              borderRadius: 24,
+              padding: 20,
+              marginBottom: 18,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <Ionicons name="wallet-outline" size={20} color={colors.primary} />
+              <Text
+                style={{
+                  color: colors.text,
+                  fontSize: 18,
+                  fontWeight: '700',
+                  marginLeft: 10,
+                }}
+              >
+                Monthly budget
+              </Text>
+            </View>
 
-        {/* Income Type */}
-        <Select
-          label="Income Type"
-          value={incomeType}
-          options={incomeTypes}
-          onSelect={(value) => setIncomeType(value as any)}
-          placeholder="Select your income type"
-        />
+            <Text
+              style={{
+                color: colors.textSecondary,
+                fontSize: 14,
+                lineHeight: 22,
+                marginBottom: 16,
+              }}
+            >
+              Recommended, not required. We use this to compare your spending and keep your dashboard grounded in a real monthly target.
+            </Text>
 
-        {/* Income Frequency */}
-        <Select
-          label="Income Frequency"
-          value={incomeFrequency}
-          options={incomeFrequencies}
-          onSelect={(value) => setIncomeFrequency(value as any)}
-          placeholder="Select how often you receive income"
-        />
+            {budgetLoading ? (
+              <View style={{ paddingVertical: 12, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : (
+              <>
+                {hasExistingBudget && (
+                  <Text
+                    style={{
+                      color: colors.textSecondary,
+                      fontSize: 13,
+                      marginBottom: 10,
+                    }}
+                  >
+                    Current budget: ₦{Number(currentLimit).toLocaleString('en-NG')}
+                  </Text>
+                )}
 
-         {/* Average Income */}
-         <Input
-           label="Average Monthly Income"
-           value={averageIncome}
-           onChangeText={handleIncomeChange}
-           placeholder="0"
-           keyboardType="numeric"
-           optional
-           leftIcon={<Ionicons name="cash-outline" size={20} color={colors.textSecondary} />}
-           containerClassName="mb-4"
-         />
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    borderRadius: 18,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    backgroundColor: colors.background,
+                    paddingHorizontal: 16,
+                    paddingVertical: 14,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: colors.text,
+                      fontSize: 18,
+                      fontWeight: '700',
+                      marginRight: 10,
+                    }}
+                  >
+                    ₦
+                  </Text>
+                  <TextInput
+                    value={monthlyBudget}
+                    onChangeText={(text) => setMonthlyBudget(formatAmount(text))}
+                    placeholder={hasExistingBudget ? String(Number(currentLimit).toLocaleString('en-NG')) : '0'}
+                    placeholderTextColor={colors.textTertiary}
+                    keyboardType="numeric"
+                    style={{
+                      color: colors.text,
+                      flex: 1,
+                      fontSize: 18,
+                      paddingVertical: 0,
+                    }}
+                  />
+                </View>
 
-        {/* Financial Goals */}
-        <Input
-          label="Financial Goals"
-          value={goals}
-          onChangeText={setGoals}
-          placeholder="e.g., Save for vacation, Pay off debt (comma separated)"
-          multiline
-          numberOfLines={4}
-          textAlignVertical="top"
-          optional
-          containerClassName="mb-8"
-        />
+                <Text
+                  style={{
+                    color: colors.textTertiary,
+                    fontSize: 12,
+                    lineHeight: 18,
+                    marginTop: 10,
+                  }}
+                >
+                  Optional during setup. Maximum allowed is ₦50,000,000.
+                </Text>
+              </>
+            )}
+          </View>
 
-        <Button
-          title="Continue"
-          onPress={handleContinue}
-          fullWidth
-          size="large"
-          disabled={!incomeType || !incomeFrequency || setupProfileMutation.isPending}
-        />
+          <View
+            style={{
+              backgroundColor: colors.backgroundSecondary,
+              borderRadius: 24,
+              padding: 20,
+              marginBottom: 24,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 14 }}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={colors.primary} />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text
+                  style={{
+                    color: colors.text,
+                    fontSize: 18,
+                    fontWeight: '700',
+                    marginBottom: 6,
+                  }}
+                >
+                  Data analysis consent
+                </Text>
+                <Text
+                  style={{
+                    color: colors.textSecondary,
+                    fontSize: 14,
+                    lineHeight: 22,
+                  }}
+                >
+                  SEFA analyzes your transactions to categorize spending, surface patterns, and generate personalized insights. Your data stays protected and you can review your settings later.
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => setConsentGiven((current) => !current)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                borderRadius: 18,
+                borderWidth: 1,
+                borderColor: consentGiven ? colors.primary : colors.border,
+                backgroundColor: consentGiven ? colors.primaryBackground : colors.background,
+                paddingHorizontal: 14,
+                paddingVertical: 14,
+              }}
+            >
+              <View
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 8,
+                  borderWidth: 1.5,
+                  borderColor: consentGiven ? colors.primary : colors.border,
+                  backgroundColor: consentGiven ? colors.primary : 'transparent',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 12,
+                }}
+              >
+                {consentGiven ? (
+                  <Ionicons name="checkmark" size={16} color={colors.textInverse} />
+                ) : null}
+              </View>
+              <Text
+                style={{
+                  color: colors.text,
+                  flex: 1,
+                  fontSize: 14,
+                  lineHeight: 21,
+                }}
+              >
+                I agree to SEFA analyzing my financial data to provide budgeting and insight features.
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <Button
+            title="Finish Setup"
+            onPress={() => finishOnboarding()}
+            fullWidth
+            size="large"
+            disabled={isSubmitting}
+          />
+
+          <Button
+            title="Skip Budget for Now"
+            onPress={() => finishOnboarding({ skipBudget: true })}
+            fullWidth
+            size="large"
+            variant="outline"
+            disabled={isSubmitting}
+            className="mt-3"
+          />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

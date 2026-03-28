@@ -1,23 +1,19 @@
-import { Tabs, Redirect } from 'expo-router';
+import { Tabs, Redirect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef } from 'react';
-import { useRouter } from 'expo-router';
-import { Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import type { NotificationResponse } from 'expo-notifications';
 
-import { HapticTab } from '@/components/haptic-tab';
 import { AnimatedTabBar } from '@/components/navigation/AnimatedTabBar';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth.store';
 import { useCurrentUser } from '@/features/auth/auth.hooks';
+import { useOnboardingStatus } from '@/features/onboarding/onboarding.hooks';
+import { getOnboardingRoute } from '@/features/auth/auth-routing';
 import { PushNotificationService } from '@/services/pushNotification.service';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useAuthStore();
   const { data: userData, isLoading: userLoading, isError } = useCurrentUser();
+  const { data: onboardingData, isLoading: onboardingLoading } = useOnboardingStatus();
   const handledNotificationResponseId = useRef<string | null>(null);
 
   const navigateFromNotificationResponse = useCallback((response: NotificationResponse | null) => {
@@ -40,7 +36,7 @@ export default function TabLayout() {
 
   // Guard: Redirect if not authenticated
   useEffect(() => {
-    if (authLoading || userLoading) return;
+    if (authLoading || userLoading || onboardingLoading) return;
 
     if (isError || !isAuthenticated || !userData?.data?.user) {
       router.replace('/(auth)/login');
@@ -57,14 +53,18 @@ export default function TabLayout() {
 
     // Check if onboarding is completed (post-auth onboarding: financial profile, consent, categories)
     if (!user.onboardingCompleted) {
-      router.replace('/(onboarding)/profile');
+      router.replace(getOnboardingRoute(onboardingData?.data || null));
       return;
     }
-  }, [authLoading, userLoading, isAuthenticated, userData, isError, router]);
+  }, [authLoading, userLoading, onboardingLoading, isAuthenticated, userData, onboardingData, isError, router]);
 
   // Register for push notifications once authenticated
   useEffect(() => {
-    if (isAuthenticated && userData?.data?.user) {
+    if (
+      isAuthenticated
+      && userData?.data?.user?.isVerified
+      && userData.data.user.onboardingCompleted
+    ) {
       PushNotificationService.registerAndSync().catch(() => {
         // Non-critical — ignore push registration failures silently
       });
@@ -72,7 +72,11 @@ export default function TabLayout() {
   }, [isAuthenticated, userData]);
 
   useEffect(() => {
-    if (!isAuthenticated || !userData?.data?.user) {
+    if (
+      !isAuthenticated
+      || !userData?.data?.user?.isVerified
+      || !userData.data.user.onboardingCompleted
+    ) {
       return;
     }
 
@@ -98,16 +102,22 @@ export default function TabLayout() {
   }, [isAuthenticated, navigateFromNotificationResponse, userData]);
 
   // Show nothing while checking auth status
-  if (authLoading || userLoading) {
+  if (authLoading || userLoading || onboardingLoading) {
     return null;
   }
 
   // If not authenticated or not verified or onboarding not completed, redirect
-  if (isError || !isAuthenticated || !userData?.data?.user || !userData.data.user.isVerified || !userData.data.user.onboardingCompleted) {
+  if (isError || !isAuthenticated || !userData?.data?.user) {
     return <Redirect href="/(auth)/login" />;
   }
 
-  const colors = Colors[colorScheme ?? 'light'];
+  if (!userData.data.user.isVerified) {
+    return <Redirect href="/(auth)/verify-otp" />;
+  }
+
+  if (!userData.data.user.onboardingCompleted) {
+    return <Redirect href={getOnboardingRoute(onboardingData?.data || null)} />;
+  }
 
   return (
     <Tabs

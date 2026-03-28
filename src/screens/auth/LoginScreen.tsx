@@ -13,8 +13,9 @@ import { PasswordInput } from '@/src/components/common/PasswordInput';
 import { Button } from '@/src/components/common/Button';
 import { Toast, useToast } from '@/src/components/common/Toast';
 import { useLogin } from '@/features/auth/auth.hooks';
+import { getOnboardingStatus } from '@/features/onboarding/onboarding.service';
+import { getOnboardingRoute } from '@/features/auth/auth-routing';
 import { validateLogin } from '@/utils/validators';
-import { Ionicons } from '@expo/vector-icons';
 import { sefaLogoSvg } from '@/assets/illustrations';
 
 export default function LoginScreen() {
@@ -45,27 +46,20 @@ export default function LoginScreen() {
 
     try {
       const response = await loginMutation.mutateAsync({ email, password });
-      
-      console.log('🔐 Login response:', {
-        success: response.success,
-        requiresVerification: response.data?.requiresVerification,
-        userVerified: response.data?.user?.isVerified,
-        onboardingCompleted: response.data?.user?.onboardingCompleted,
-      });
-      
-      // Check if user needs verification
+
       if (response.data?.requiresVerification) {
-        console.log('🔐 Redirecting to verify-otp');
-        router.push({
+        router.replace({
           pathname: '/(auth)/verify-otp',
           params: { email, purpose: 'login' },
         });
       } else {
-        // Always redirect to tabs after successful login
-        console.log('🔐 Redirecting to tabs');
-        setTimeout(() => {
+        if (response.data?.user?.onboardingCompleted) {
           router.replace('/(tabs)');
-        }, 100);
+          return;
+        }
+
+        const onboardingStatus = await getOnboardingStatus();
+        router.replace(getOnboardingRoute(onboardingStatus.data));
       }
     } catch (error: any) {
       const message = error?.response?.data?.error?.message || 'Invalid email or password';
@@ -184,7 +178,7 @@ export default function LoginScreen() {
             className="text-base"
             style={{ color: colors.textSecondary }}
           >
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
           </Text>
           <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
             <Text

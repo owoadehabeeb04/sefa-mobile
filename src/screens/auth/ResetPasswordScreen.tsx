@@ -4,7 +4,7 @@
 
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Redirect, useRouter, useLocalSearchParams } from 'expo-router';
 import { SvgXml } from 'react-native-svg';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -12,7 +12,11 @@ import { PasswordInput } from '@/src/components/common/PasswordInput';
 import { Button } from '@/src/components/common/Button';
 import { Toast, useToast } from '@/src/components/common/Toast';
 import { OTPVerificationScreen } from '@/src/components/auth/OTPVerificationScreen';
-import { useResetPassword, useResendOTP } from '@/features/auth/auth.hooks';
+import {
+  useResetPassword,
+  useResendPasswordResetOTP,
+  useVerifyPasswordResetOTP,
+} from '@/features/auth/auth.hooks';
 import { validatePassword } from '@/utils/validators';
 import { Ionicons } from '@expo/vector-icons';
 import { sefaLogoSvg } from '@/assets/illustrations';
@@ -31,7 +35,12 @@ export default function ResetPasswordScreen() {
   const { toastConfig, showToast, hideToast } = useToast();
 
   const resetPasswordMutation = useResetPassword();
-  const resendOTPMutation = useResendOTP();
+  const resendOTPMutation = useResendPasswordResetOTP();
+  const verifyPasswordResetOTPMutation = useVerifyPasswordResetOTP();
+
+  if (!email.trim()) {
+    return <Redirect href="/(auth)/forgot-password" />;
+  }
 
   // Generate logo with primary color
   const getLogoSvg = (color: string) => {
@@ -39,8 +48,13 @@ export default function ResetPasswordScreen() {
   };
 
   const handleVerifyOTP = async (otpCode: string) => {
-    setOtp(otpCode);
-    setStep('password');
+    try {
+      await verifyPasswordResetOTPMutation.mutateAsync({ email, otp: otpCode });
+      setOtp(otpCode);
+      setStep('password');
+    } catch (error) {
+      throw error;
+    }
   };
 
   const handleResendOTP = async () => {
@@ -153,7 +167,15 @@ export default function ResetPasswordScreen() {
           onVerify={handleVerifyOTP}
           onResend={handleResendOTP}
           purpose="forgot-password"
-          isLoading={resendOTPMutation.isPending}
+          isLoading={resendOTPMutation.isPending || verifyPasswordResetOTPMutation.isPending}
+          error={
+            (verifyPasswordResetOTPMutation.error as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message
+          }
+          errorDetails={
+            (verifyPasswordResetOTPMutation.error as { response?: { data?: { error?: { details?: Record<string, unknown> } } } })?.response?.data?.error?.details as
+              | { code?: string; retryAfterSeconds?: number }
+              | undefined
+          }
         />
           </View>
         </TouchableWithoutFeedback>

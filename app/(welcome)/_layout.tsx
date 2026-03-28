@@ -6,24 +6,25 @@
 import { Stack, Redirect } from 'expo-router';
 import { useAuthStore } from '@/store/auth.store';
 import { useCurrentUser } from '@/features/auth/auth.hooks';
+import { useOnboardingStatus } from '@/features/onboarding/onboarding.hooks';
+import { resolveAuthenticatedRoute } from '@/features/auth/auth-routing';
 
 export default function WelcomeLayout() {
   const { isAuthenticated, isLoading } = useAuthStore();
   const { data: userData, isLoading: userLoading } = useCurrentUser();
+  const { data: onboardingData, isLoading: onboardingLoading } = useOnboardingStatus();
 
   // If authenticated and verified and onboarding completed, redirect to tabs
   // This prevents showing welcome screen to logged-in users
-  if (!isLoading && !userLoading && isAuthenticated && userData?.data?.user) {
-    const user = userData.data.user;
-    if (user.isVerified && user.onboardingCompleted) {
-      return <Redirect href="/(tabs)" />;
+  if (!isLoading && !userLoading && !onboardingLoading && isAuthenticated && userData?.data?.user) {
+    const destination = resolveAuthenticatedRoute(
+      userData.data.user,
+      onboardingData?.data || null
+    );
+
+    if (destination !== '/(welcome)') {
+      return <Redirect href={destination} />;
     }
-    // If authenticated but not verified or onboarding incomplete, redirect to appropriate screen
-    if (!user.isVerified) {
-      return <Redirect href="/(auth)/verify-otp" />;
-    }
-    // If verified but onboarding incomplete, go to post-auth onboarding
-    return <Redirect href="/(onboarding)/profile" />;
   }
 
   return (

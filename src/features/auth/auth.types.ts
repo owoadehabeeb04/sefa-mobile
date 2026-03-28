@@ -9,6 +9,7 @@ export interface User {
   currency: string;
   isVerified: boolean;
   onboardingCompleted: boolean;
+  onboardingStatus?: string;
   preferences?: {
     notifications: boolean;
     theme: string;
@@ -37,8 +38,17 @@ export interface ResendOTPRequest {
   email: string;
 }
 
+export interface ResendPasswordResetOTPRequest {
+  email: string;
+}
+
 export interface ForgotPasswordRequest {
   email: string;
+}
+
+export interface VerifyPasswordResetOTPRequest {
+  email: string;
+  otp: string;
 }
 
 export interface ResetPasswordRequest {
@@ -47,13 +57,38 @@ export interface ResetPasswordRequest {
   newPassword: string;
 }
 
-export interface AuthResponse {
-  user: User;
-  token: string;
-  refreshToken: string;
-  requiresVerification?: boolean;
+export interface RegisterResponse {
+  user: Pick<User, 'id' | 'email' | 'isVerified' | 'onboardingCompleted' | 'onboardingStatus'>;
+  requiresVerification: boolean;
   expiresIn?: string;
 }
+
+export interface LoginResponse {
+  user: User;
+  token?: string;
+  refreshToken?: string;
+  requiresVerification?: boolean;
+}
+
+export interface VerifyEmailResponse {
+  user: User;
+  token?: string;
+  refreshToken?: string;
+}
+
+export interface RefreshTokenResponse {
+  token: string;
+}
+
+export interface LogoutRequest {
+  refreshToken: string;
+}
+
+export interface PasswordResetOtpVerificationResponse {
+  canResetPassword: boolean;
+}
+
+export type AuthResponse = LoginResponse | VerifyEmailResponse;
 
 export interface ApiResponse<T> {
   success: boolean;

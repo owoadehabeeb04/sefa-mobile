@@ -12,6 +12,8 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth.store';
 import { useCurrentUser } from '@/features/auth/auth.hooks';
+import { useOnboardingStatus } from '@/features/onboarding/onboarding.hooks';
+import { resolveAuthenticatedRoute } from '@/features/auth/auth-routing';
 import { sefaLogoSvg } from '@/assets/illustrations';
 
 const MIN_SPLASH_DURATION_MS = 10000; // 10 seconds minimum
@@ -26,6 +28,7 @@ export default function SplashScreen() {
   
   const { initializeAuth, isLoading: authLoading, isAuthenticated, setUser, clearAuth } = useAuthStore();
   const { data: userData, isLoading: userLoading, isError } = useCurrentUser();
+  const { data: onboardingData, isLoading: onboardingLoading } = useOnboardingStatus();
 
   // Animate logo in on mount (so it actually appears)
   useEffect(() => {
@@ -65,7 +68,7 @@ export default function SplashScreen() {
 
   // Navigate only after auth/user are ready AND at least 10 seconds have passed
   useEffect(() => {
-    if (authLoading || userLoading) return;
+    if (authLoading || userLoading || onboardingLoading) return;
 
     const elapsed = Date.now() - mountTimeRef.current;
     const waitMs = Math.max(0, MIN_SPLASH_DURATION_MS - elapsed);
@@ -76,23 +79,13 @@ export default function SplashScreen() {
         return;
       }
 
-      const user = userData.data.user;
-
-      if (!user.isVerified) {
-        router.replace('/(auth)/verify-otp');
-        return;
-      }
-
-      if (!user.onboardingCompleted) {
-        router.replace('/(onboarding)/profile');
-        return;
-      }
-
-      router.replace('/(tabs)');
+      router.replace(
+        resolveAuthenticatedRoute(userData.data.user, onboardingData?.data || null)
+      );
     }, waitMs);
 
     return () => clearTimeout(timer);
-  }, [authLoading, userLoading, isAuthenticated, userData, isError, router]);
+  }, [authLoading, userLoading, onboardingLoading, isAuthenticated, userData, onboardingData, isError, router]);
 
   return (
     <View

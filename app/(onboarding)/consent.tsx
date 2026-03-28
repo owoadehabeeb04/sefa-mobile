@@ -1,7 +1,9 @@
 /**
- * Consent Onboarding Route
+ * Legacy consent route kept as a compatibility redirect.
  */
 
-import ConsentScreen from '@/src/screens/onboarding/ConsentScreen';
+import { Redirect } from 'expo-router';
 
-export default ConsentScreen;
+export default function ConsentRedirect() {
+  return <Redirect href="/(onboarding)/profile" />;
+}

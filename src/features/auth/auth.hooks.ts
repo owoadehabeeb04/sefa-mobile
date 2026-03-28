@@ -9,7 +9,9 @@ import {
   login,
   verifyEmail,
   resendOTP,
+  resendPasswordResetOTP,
   forgotPassword,
+  verifyPasswordResetOTP,
   resetPassword,
   getCurrentUser, 
   logout,
@@ -19,7 +21,9 @@ import type {
   LoginRequest,
   VerifyEmailRequest,
   ResendOTPRequest,
+  ResendPasswordResetOTPRequest,
   ForgotPasswordRequest,
+  VerifyPasswordResetOTPRequest,
   ResetPasswordRequest,
 } from './auth.types';
 
@@ -27,18 +31,8 @@ import type {
  * Register mutation
  */
 export const useRegister = () => {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: (data: RegisterRequest) => register(data),
-    onSuccess: (response) => {
-      console.log('📝 Registration response:', response);
-      // Registration successful - user needs to verify email before getting tokens
-      // Tokens will be provided after email verification
-      if (response.success && response.data) {
-        console.log('📝 User registered, verification required');
-      }
-    },
   });
 };
 
@@ -51,20 +45,14 @@ export const useLogin = () => {
 
   return useMutation({
     mutationFn: (data: LoginRequest) => login(data),
-    onSuccess: (response) => {
-      console.log('🔐 Login response structure:', JSON.stringify(response, null, 2));
-      
+    onSuccess: async (response) => {
       if (response.success && response.data) {
         const { user, token, refreshToken } = response.data;
-        // Validate tokens before storing
+
         if (token && refreshToken && typeof token === 'string' && typeof refreshToken === 'string') {
-          setAuth(user, token, refreshToken);
-          queryClient.setQueryData(['user'], user);
-          // Invalidate to refetch fresh user data
-          queryClient.invalidateQueries({ queryKey: ['user'] });
-        } else {
-          console.error('Invalid tokens received. Full response.data:', response.data);
-          console.error('Expected token and refreshToken but got:', { token, refreshToken });
+          await setAuth(user, token, refreshToken);
+          await queryClient.invalidateQueries({ queryKey: ['user'] });
+          await queryClient.invalidateQueries({ queryKey: ['onboarding-status'] });
         }
       }
     },
@@ -80,27 +68,20 @@ export const useVerifyEmail = () => {
 
   return useMutation({
     mutationFn: (data: VerifyEmailRequest) => verifyEmail(data),
-    onSuccess: (response) => {
-      console.log('📧 Verify email response:', JSON.stringify(response, null, 2));
-      
+    onSuccess: async (response) => {
       if (response.success && response.data) {
         const { user, token, refreshToken } = response.data;
-        
-        // If user is already verified, tokens may not be returned
+
         if (user.isVerified && !token) {
-          console.log('📧 User already verified, tokens not required');
-          // Invalidate to refetch user data
-          queryClient.invalidateQueries({ queryKey: ['user'] });
+          await queryClient.invalidateQueries({ queryKey: ['user'] });
+          await queryClient.invalidateQueries({ queryKey: ['onboarding-status'] });
           return;
         }
-        
-        // Validate tokens before storing
+
         if (token && refreshToken && typeof token === 'string' && typeof refreshToken === 'string') {
-          setAuth(user, token, refreshToken);
-          queryClient.setQueryData(['user'], user);
-          queryClient.invalidateQueries({ queryKey: ['user'] });
-        } else {
-          console.error('Invalid tokens received. Full response.data:', response.data);
+          await setAuth(user, token, refreshToken);
+          await queryClient.invalidateQueries({ queryKey: ['user'] });
+          await queryClient.invalidateQueries({ queryKey: ['onboarding-status'] });
         }
       }
     },
@@ -117,11 +98,29 @@ export const useResendOTP = () => {
 };
 
 /**
+ * Resend OTP for password reset
+ */
+export const useResendPasswordResetOTP = () => {
+  return useMutation({
+    mutationFn: (data: ResendPasswordResetOTPRequest) => resendPasswordResetOTP(data),
+  });
+};
+
+/**
  * Forgot password mutation
  */
 export const useForgotPassword = () => {
   return useMutation({
     mutationFn: (data: ForgotPasswordRequest) => forgotPassword(data),
+  });
+};
+
+/**
+ * Verify password reset OTP
+ */
+export const useVerifyPasswordResetOTP = () => {
+  return useMutation({
+    mutationFn: (data: VerifyPasswordResetOTPRequest) => verifyPasswordResetOTP(data),
   });
 };
 
@@ -158,6 +157,10 @@ export const useLogout = () => {
   return useMutation({
     mutationFn: logout,
     onSuccess: async () => {
+      await logoutStore();
+      queryClient.clear();
+    },
+    onError: async () => {
       await logoutStore();
       queryClient.clear();
     },

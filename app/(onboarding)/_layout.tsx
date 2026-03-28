@@ -1,19 +1,22 @@
 /**
- * Onboarding Layout - Post-auth onboarding screens
- * Financial profile setup and consent acceptance
+ * Onboarding Layout - Post-auth onboarding screen
  */
 
-import { Stack, Redirect } from 'expo-router';
+import { Stack, Redirect, useSegments } from 'expo-router';
 import { useAuthStore } from '@/store/auth.store';
 import { useCurrentUser } from '@/features/auth/auth.hooks';
 import { Loading } from '@/src/components/common/Loading';
+import { useOnboardingStatus } from '@/features/onboarding/onboarding.hooks';
+import { getOnboardingRoute } from '@/features/auth/auth-routing';
 
 export default function OnboardingLayout() {
+  const segments = useSegments();
   const { isAuthenticated, isLoading: authLoading } = useAuthStore();
   const { data: userData, isLoading: userLoading, isError } = useCurrentUser();
+  const { data: onboardingData, isLoading: onboardingLoading } = useOnboardingStatus();
 
   // Show loading while checking auth status
-  if (authLoading || userLoading) {
+  if (authLoading || userLoading || onboardingLoading) {
     return <Loading fullScreen message="Loading..." />;
   }
 
@@ -34,6 +37,14 @@ export default function OnboardingLayout() {
     return <Redirect href="/(tabs)" />;
   }
 
+  const desiredRoute = getOnboardingRoute(onboardingData?.data || null);
+  const currentScreen = segments[segments.length - 1];
+  const desiredScreen = desiredRoute.split('/').pop();
+
+  if (currentScreen !== desiredScreen) {
+    return <Redirect href={desiredRoute} />;
+  }
+
   return (
     <Stack
       screenOptions={{
@@ -42,7 +53,6 @@ export default function OnboardingLayout() {
       }}
     >
       <Stack.Screen name="profile" />
-      <Stack.Screen name="consent" />
     </Stack>
   );
 }

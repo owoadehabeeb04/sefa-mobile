@@ -167,7 +167,7 @@ export default function ChangePasswordScreen() {
           <View className="flex-row items-center mb-4">
             <Ionicons name="lock-closed-outline" size={20} color={colors.primary} />
             <Text className="text-sm ml-2 flex-1" style={{ color: colors.textSecondary }}>
-              For security, you'll need to verify your identity with an OTP sent to your email.
+              For security, you&apos;ll need to verify your identity with an OTP sent to your email.
             </Text>
           </View>
         </View>

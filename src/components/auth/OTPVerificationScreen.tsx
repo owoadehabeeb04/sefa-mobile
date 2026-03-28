@@ -2,14 +2,19 @@
  * OTP Verification Screen - Reusable component
  */
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AccessibilityInfo, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { OTPInput } from '@/src/components/common/OTPInput';
 import { Button } from '@/src/components/common/Button';
 import { Loading } from '@/src/components/common/Loading';
 import { maskEmail } from '@/src/utils/formatters';
+
+interface OTPErrorDetails {
+  code?: string;
+  retryAfterSeconds?: number;
+}
 
 interface OTPVerificationScreenProps {
   email: string;
@@ -18,7 +23,37 @@ interface OTPVerificationScreenProps {
   purpose?: 'signup' | 'forgot-password' | 'login';
   isLoading?: boolean;
   error?: string;
+  errorDetails?: OTPErrorDetails;
 }
+
+const INITIAL_RESEND_SECONDS = 60;
+
+const getPurposeCopy = (purpose: OTPVerificationScreenProps['purpose']) => {
+  switch (purpose) {
+    case 'forgot-password':
+      return {
+        title: 'Check your email',
+        subtitle: 'Enter the 6-digit reset code we sent to',
+        loadingMessage: 'Verifying reset code...',
+        buttonLabel: 'Verify code',
+      };
+    case 'login':
+      return {
+        title: 'Verify your account',
+        subtitle: 'Enter the 6-digit code we sent to',
+        loadingMessage: 'Verifying your account...',
+        buttonLabel: 'Verify code',
+      };
+    case 'signup':
+    default:
+      return {
+        title: 'Confirm your email',
+        subtitle: 'Enter the 6-digit code we sent to',
+        loadingMessage: 'Verifying your email...',
+        buttonLabel: 'Verify code',
+      };
+  }
+};
 
 export const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({
   email,
@@ -27,34 +62,93 @@ export const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({
   purpose = 'signup',
   isLoading = false,
   error,
+  errorDetails,
 }) => {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
+  const copy = useMemo(() => getPurposeCopy(purpose), [purpose]);
   const [otp, setOtp] = useState('');
-  const [timer, setTimer] = useState(60);
-  const [canResend, setCanResend] = useState(false);
+  const [timer, setTimer] = useState(INITIAL_RESEND_SECONDS);
+  const [clearSignal, setClearSignal] = useState(0);
+  const [submitError, setSubmitError] = useState<string | undefined>(error);
+  const lastSubmittedOtpRef = useRef<string | null>(null);
+  const hasCompleteOtp = otp.length === 6;
+  const isTemporarilyLocked = Boolean(
+    errorDetails?.code && ['OTP_LOCKED', 'OTP_RESEND_TOO_SOON'].includes(errorDetails.code)
+  );
 
   useEffect(() => {
-    if (timer > 0) {
-      const interval = setInterval(() => {
-        setTimer((prev) => prev - 1);
-      }, 1000);
-      return () => clearInterval(interval);
-    } else {
-      setCanResend(true);
+    setSubmitError(error);
+  }, [error]);
+
+  useEffect(() => {
+    if (errorDetails?.retryAfterSeconds && errorDetails.retryAfterSeconds > 0) {
+      setTimer(errorDetails.retryAfterSeconds);
     }
+
+    if (errorDetails?.code === 'OTP_EXPIRED') {
+      setOtp('');
+      setClearSignal((value) => value + 1);
+    }
+  }, [errorDetails]);
+
+  useEffect(() => {
+    if (!submitError) {
+      return;
+    }
+
+    AccessibilityInfo.announceForAccessibility(submitError);
+  }, [submitError]);
+
+  useEffect(() => {
+    if (timer <= 0) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setTimer((prev) => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, [timer]);
 
-  const handleOTPComplete = async (otpCode: string) => {
-    setOtp(otpCode);
+  const submitOtp = useCallback(async (otpCode: string) => {
+    if (isLoading || otpCode.length < 6 || isTemporarilyLocked) {
+      return;
+    }
+
+    lastSubmittedOtpRef.current = otpCode;
+    setSubmitError(undefined);
     await onVerify(otpCode);
-  };
+  }, [isLoading, isTemporarilyLocked, onVerify]);
+
+  useEffect(() => {
+    if (!hasCompleteOtp || isLoading || isTemporarilyLocked) {
+      return;
+    }
+
+    if (lastSubmittedOtpRef.current === otp) {
+      return;
+    }
+
+    submitOtp(otp).catch(() => undefined);
+  }, [hasCompleteOtp, isLoading, isTemporarilyLocked, otp, submitOtp]);
 
   const handleResend = async () => {
-    if (canResend) {
-      setTimer(60);
-      setCanResend(false);
+    if (timer > 0 || isLoading) {
+      return;
+    }
+
+    try {
       await onResend();
+      setSubmitError(undefined);
+      setOtp('');
+      setClearSignal((value) => value + 1);
+      setTimer(INITIAL_RESEND_SECONDS);
+      lastSubmittedOtpRef.current = null;
+      AccessibilityInfo.announceForAccessibility('A new one-time password has been sent.');
+    } catch {
+      // Parent handles the visible error state.
     }
   };
 
@@ -70,27 +164,40 @@ export const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({
           className="text-3xl font-bold mb-2"
           style={{ color: colors.text }}
         >
-          Enter 6-digit code
+          {copy.title}
         </Text>
         <Text
-          className="text-base"
+          className="text-base leading-6"
           style={{ color: colors.textSecondary }}
         >
-          We've sent the code to {maskedEmail}
+          {copy.subtitle} <Text style={{ color: colors.text, fontWeight: '600' }}>{maskedEmail}</Text>
         </Text>
       </View>
 
       <OTPInput
         length={6}
-        onComplete={handleOTPComplete}
-        error={error}
-        disabled={isLoading}
+        value={otp}
+        onChangeOTP={setOtp}
+        error={submitError}
+        disabled={isLoading || isTemporarilyLocked}
+        clearSignal={clearSignal}
       />
 
-      <View className="mt-8 items-center">
+      <View className="mt-8">
+        <Button
+          title={copy.buttonLabel}
+          onPress={() => submitOtp(otp)}
+          fullWidth
+          size="large"
+          disabled={!hasCompleteOtp || isLoading || isTemporarilyLocked}
+          loading={isLoading}
+        />
+      </View>
+
+      <View className="mt-6 items-center">
         {timer > 0 ? (
           <Text
-            className="text-sm"
+            className="text-sm text-center"
             style={{ color: colors.textTertiary }}
           >
             Resend code in {timer}s
@@ -107,9 +214,18 @@ export const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({
         )}
       </View>
 
+      {isTemporarilyLocked && timer > 0 && (
+        <Text
+          className="mt-3 text-sm text-center"
+          style={{ color: colors.textSecondary }}
+        >
+          Verification is temporarily paused. Request a new code when the timer ends.
+        </Text>
+      )}
+
       {isLoading && (
         <View className="mt-6">
-          <Loading message="Verifying..." />
+          <Loading message={copy.loadingMessage} />
         </View>
       )}
     </View>

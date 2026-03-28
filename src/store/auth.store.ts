@@ -3,7 +3,13 @@
  */
 
 import { create } from 'zustand';
-import { storeTokens, clearTokens, getStoredToken } from '@/services/api';
+import {
+  storeTokens,
+  clearTokens,
+  getStoredRefreshToken,
+  getStoredToken,
+  registerAuthFailureHandler,
+} from '@/services/api';
 import type { User } from '@/features/auth/auth.types';
 
 interface AuthState {
@@ -30,19 +36,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initializeAuth: async () => {
     try {
-      // Check if we have a stored token
+      const storedRefreshToken = await getStoredRefreshToken();
       const storedToken = await getStoredToken();
-      if (storedToken) {
-        // Token exists - set as authenticated temporarily
-        // We'll verify it's valid by fetching user in SplashScreen
+
+      if (storedToken && storedRefreshToken) {
         set({
           token: storedToken,
-          isAuthenticated: true, // Temporary - will be verified by useCurrentUser
+          refreshToken: storedRefreshToken,
+          isAuthenticated: true,
           isLoading: false,
         });
       } else {
-        // No token, user is not authenticated
+        await clearTokens();
         set({
+          token: null,
+          refreshToken: null,
           isAuthenticated: false,
           isLoading: false,
         });
@@ -50,6 +58,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (error) {
       console.error('Error initializing auth:', error);
       set({
+        token: null,
+        refreshToken: null,
         isAuthenticated: false,
         isLoading: false,
       });
@@ -109,3 +119,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
 }));
+
+registerAuthFailureHandler(async () => {
+  useAuthStore.setState({
+    user: null,
+    token: null,
+    refreshToken: null,
+    isAuthenticated: false,
+    isLoading: false,
+  });
+});

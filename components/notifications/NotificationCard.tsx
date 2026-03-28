@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { formatDistanceToNowStrict } from 'date-fns';
 import type { AppNotification, NotificationIcon } from '@/features/notifications/notification.types';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -48,7 +47,33 @@ const formatRelativeTime = (createdAt?: string, fallback?: string) => {
     return 'Just now';
   }
 
-  return `${formatDistanceToNowStrict(created)} ago`;
+  const totalMinutes = Math.floor(diffMs / 60_000);
+  if (totalMinutes < 60) {
+    return `${totalMinutes}m ago`;
+  }
+
+  const totalHours = Math.floor(totalMinutes / 60);
+  if (totalHours < 24) {
+    return `${totalHours}h ago`;
+  }
+
+  const totalDays = Math.floor(totalHours / 24);
+  if (totalDays < 7) {
+    return `${totalDays}d ago`;
+  }
+
+  const totalWeeks = Math.floor(totalDays / 7);
+  if (totalWeeks < 5) {
+    return `${totalWeeks}w ago`;
+  }
+
+  const totalMonths = Math.floor(totalDays / 30);
+  if (totalMonths < 12) {
+    return `${totalMonths}mo ago`;
+  }
+
+  const totalYears = Math.floor(totalDays / 365);
+  return `${Math.max(totalYears, 1)}y ago`;
 };
 
 export const NotificationCard: React.FC<NotificationCardProps> = ({

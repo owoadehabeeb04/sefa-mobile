@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useRef } from 'react';
-import { View, Text, ScrollView, Dimensions, Animated, TouchableOpacity, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View, Text, Dimensions, Animated, TouchableOpacity, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SvgXml } from 'react-native-svg';
 import { Colors } from '@/constants/theme';
@@ -11,15 +11,14 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Input } from '@/src/components/common/Input';
 import { PasswordInput } from '@/src/components/common/PasswordInput';
 import { Button } from '@/src/components/common/Button';
-import { Loading } from '@/src/components/common/Loading';
 import { Toast, useToast } from '@/src/components/common/Toast';
 import { OTPVerificationScreen } from '@/src/components/auth/OTPVerificationScreen';
 import { useRegister, useVerifyEmail, useResendOTP } from '@/features/auth/auth.hooks';
-import { validateRegistration, validateEmail as validateEmailUtil } from '@/utils/validators';
+import { getOnboardingStatus } from '@/features/onboarding/onboarding.service';
+import { getOnboardingRoute } from '@/features/auth/auth-routing';
+import { validateEmail as validateEmailUtil } from '@/utils/validators';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  createAccountIllustration,
-  securePasswordIllustration,
   verificationSuccessIllustration,
   sefaLogoSvg,
 } from '@/assets/illustrations';
@@ -113,8 +112,6 @@ export default function SignupScreen() {
     }
 
     try {
-      console.log('📝 Registering with:', { name: name.trim(), email, passwordLength: password.length });
-      
       await registerMutation.mutateAsync({
         name: name.trim(),
         email,
@@ -130,8 +127,7 @@ export default function SignupScreen() {
       showToast('OTP sent to your email', 'success');
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { error?: { message?: string; details?: any[] } } }; message?: string };
-      console.error('❌ Registration error:', axiosError?.response?.data ?? axiosError?.message);
-      
+
       // Show detailed validation errors if available
       if (axiosError?.response?.data?.error?.details) {
         const validationErrors = axiosError.response.data.error.details
@@ -170,7 +166,13 @@ export default function SignupScreen() {
   };
 
   const handleContinue = () => {
-      router.replace('/(tabs)');
+    getOnboardingStatus()
+      .then((response) => {
+        router.replace(getOnboardingRoute(response.data));
+      })
+      .catch(() => {
+        router.replace('/(onboarding)/profile');
+      });
   };
 
   return (
@@ -297,7 +299,7 @@ export default function SignupScreen() {
             className="text-base mb-8"
             style={{ color: colors.textSecondary }}
           >
-            Let's get started with your details
+            Let&apos;s get started with your details
           </Text>
 
           <Input
@@ -424,6 +426,11 @@ export default function SignupScreen() {
             isLoading={verifyEmailMutation.isPending}
             error={
               (verifyEmailMutation.error as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message
+            }
+            errorDetails={
+              (verifyEmailMutation.error as { response?: { data?: { error?: { details?: Record<string, unknown> } } } })?.response?.data?.error?.details as
+                | { code?: string; retryAfterSeconds?: number }
+                | undefined
             }
           />
         </View>

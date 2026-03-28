@@ -1,129 +1,166 @@
 /**
- * OTP Input Component - 4 digit OTP input
+ * OTP Input Component
  */
 
-import React, { useRef, useState, useEffect } from 'react';
-import { View, TextInput, Text, TouchableOpacity } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface OTPInputProps {
   length?: number;
-  onComplete: (otp: string) => void;
+  value?: string;
+  onChangeOTP: (otp: string) => void;
   error?: string;
   disabled?: boolean;
+  clearSignal?: number;
+  autoFocus?: boolean;
 }
 
 export const OTPInput: React.FC<OTPInputProps> = ({
   length = 6,
-  onComplete,
+  value = '',
+  onChangeOTP,
   error,
   disabled = false,
+  clearSignal = 0,
+  autoFocus = true,
 }) => {
-  const [otp, setOtp] = useState<string[]>(Array(length).fill(''));
-  const inputRefs = useRef<(TextInput | null)[]>([]);
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
+  const inputRef = useRef<TextInput | null>(null);
+  const prevClearSignalRef = useRef(clearSignal);
+  const [isFocused, setIsFocused] = useState(false);
+
+  const normalizedValue = useMemo(
+    () => value.replace(/\D/g, '').slice(0, length),
+    [length, value]
+  );
 
   useEffect(() => {
-    const otpString = otp.join('');
-    if (otpString.length === length) {
-      onComplete(otpString);
+    if (!autoFocus || disabled) {
+      return;
     }
-  }, [otp, length, onComplete]);
 
-  const handleChange = (text: string, index: number) => {
-    if (disabled) return;
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 150);
 
-    // Only allow numbers
-    const numericText = text.replace(/[^0-9]/g, '');
-    
-    if (numericText.length > 1) {
-      // Handle paste
-      const pastedDigits = numericText.slice(0, length);
-      const newOtp = [...otp];
-      pastedDigits.split('').forEach((digit, i) => {
-        if (index + i < length) {
-          newOtp[index + i] = digit;
-        }
+    return () => clearTimeout(timer);
+  }, [autoFocus, disabled]);
+
+  useEffect(() => {
+    if (prevClearSignalRef.current === clearSignal) {
+      return;
+    }
+
+    prevClearSignalRef.current = clearSignal;
+
+    if (!disabled) {
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
       });
-      setOtp(newOtp);
-      
-      // Focus next empty input or last input
-      const nextIndex = Math.min(index + pastedDigits.length, length - 1);
-      inputRefs.current[nextIndex]?.focus();
-    } else {
-      // Single digit input
-      const newOtp = [...otp];
-      newOtp[index] = numericText;
-      setOtp(newOtp);
+    }
+  }, [clearSignal, disabled]);
 
-      // Auto-focus next input
-      if (numericText && index < length - 1) {
-        inputRefs.current[index + 1]?.focus();
-      }
+  const focusInput = () => {
+    if (!disabled) {
+      inputRef.current?.focus();
     }
   };
 
-  const handleKeyPress = (e: any, index: number) => {
-    if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
+  const handleChangeText = (text: string) => {
+    const nextValue = text.replace(/\D/g, '').slice(0, length);
+    if (nextValue !== normalizedValue) {
+      onChangeOTP(nextValue);
     }
   };
 
-  const handleFocus = (index: number) => {
-    inputRefs.current[index]?.focus();
-  };
+  const hasError = Boolean(error);
+  const boxWidth = length <= 4 ? '22%' : '15%';
 
   return (
     <View className="w-full">
-      <View className="flex-row justify-between mb-2 flex-wrap">
-        {otp.map((digit, index) => (
-          <TouchableOpacity
-            key={index}
-            onPress={() => handleFocus(index)}
-            activeOpacity={0.7}
-            disabled={disabled}
-            className="mb-2"
-            style={{ width: length <= 4 ? '22%' : '15%' }}
-          >
-            <TextInput
-              ref={(ref) => {
-                inputRefs.current[index] = ref;
-              }}
-              value={digit}
-              onChangeText={(text) => handleChange(text, index)}
-              onKeyPress={(e) => handleKeyPress(e, index)}
-              keyboardType="number-pad"
-              maxLength={1}
-              editable={!disabled}
-              className={`
-                w-full
-                ${length <= 4 ? 'h-16' : 'h-14'}
-                rounded-xl
-                border-2
-                text-center
-                ${length <= 4 ? 'text-2xl' : 'text-xl'}
-                font-bold
-                ${disabled ? 'opacity-50' : ''}
-              `}
-              style={{
-                borderColor: error ? colors.error : colors.border,
-                backgroundColor: colors.background,
-                color: colors.text,
-              }}
-            />
-          </TouchableOpacity>
-        ))}
-      </View>
-      {error && (
-        <Text
-          className="text-sm text-center"
-          style={{ color: colors.error }}
-        >
-          {error}
-        </Text>
-      )}
+      <Pressable
+        onPress={focusInput}
+        disabled={disabled}
+        accessibilityRole="button"
+        accessibilityLabel="One-time password input"
+        accessibilityHint="Double tap to enter or paste the full verification code"
+      >
+        <View className="relative">
+          <TextInput
+            ref={inputRef}
+            value={normalizedValue}
+            onChangeText={handleChangeText}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            keyboardType="number-pad"
+            textContentType="oneTimeCode"
+            autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
+            importantForAutofill="yes"
+            maxLength={length}
+            editable={!disabled}
+            allowFontScaling={false}
+            selectionColor={colors.primary}
+            contextMenuHidden={false}
+            caretHidden={Platform.OS !== 'android'}
+            accessibilityLabel="One-time password"
+            className="absolute inset-0"
+            style={{
+              opacity: 0.015,
+              zIndex: 2,
+            }}
+          />
+
+          <View className="flex-row justify-between mb-3">
+            {Array.from({ length }, (_, index) => {
+              const digit = normalizedValue[index] || '';
+              const isActive =
+                !disabled &&
+                isFocused &&
+                (index === normalizedValue.length
+                  || (normalizedValue.length === length && index === length - 1));
+
+              return (
+                <View
+                  key={index}
+                  className={`h-16 rounded-2xl border-2 items-center justify-center ${disabled ? 'opacity-60' : ''}`}
+                  style={{
+                    width: boxWidth,
+                    borderColor: hasError
+                      ? colors.error
+                      : isActive || digit
+                        ? colors.primary
+                        : colors.border,
+                    backgroundColor: disabled ? colors.backgroundSecondary : colors.background,
+                    shadowColor: digit || isActive ? colors.primary : 'transparent',
+                    shadowOpacity: digit || isActive ? 0.1 : 0,
+                    shadowRadius: 10,
+                    shadowOffset: { width: 0, height: 4 },
+                  }}
+                >
+                  <Text
+                    className="text-2xl font-bold"
+                    style={{ color: colors.text }}
+                    accessible={false}
+                  >
+                    {digit}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      </Pressable>
+
+      <Text
+        className="text-sm text-center"
+        style={{ color: hasError ? colors.error : colors.textSecondary, minHeight: 20 }}
+        accessibilityLiveRegion="polite"
+      >
+        {error || 'Enter the 6-digit code exactly as it appears in your email.'}
+      </Text>
     </View>
   );
 };

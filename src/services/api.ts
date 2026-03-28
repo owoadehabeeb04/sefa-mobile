@@ -7,6 +7,19 @@ import * as SecureStore from 'expo-secure-store';
 import { API_CONFIG, API_BASE_URL_CANDIDATES } from '../config/api';
 
 const GENERIC_ERROR_MESSAGE = 'An error occurred';
+const AUTH_REFRESH_URL = '/auth/refresh-token';
+const AUTH_BYPASS_REFRESH_PATHS = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/verify-email',
+  '/auth/verify-password-reset-otp',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/resend-otp',
+  '/auth/resend-password-reset-otp',
+  AUTH_REFRESH_URL,
+];
+let authFailureHandler: (() => Promise<void> | void) | null = null;
 
 const toUserSafeError = (error: unknown): Error => {
   if (isAxiosError(error)) {
@@ -136,6 +149,10 @@ export const clearTokens = async (): Promise<void> => {
   }
 };
 
+export const registerAuthFailureHandler = (handler: (() => Promise<void> | void) | null): void => {
+  authFailureHandler = handler;
+};
+
 // Request interceptor - Ensure discovery is done, then add token
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
@@ -159,9 +176,11 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const requestUrl = originalRequest?.url || '';
+    const shouldBypassRefresh = AUTH_BYPASS_REFRESH_PATHS.some((path) => requestUrl.includes(path));
 
     // If error is 401 and we haven't retried yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && !shouldBypassRefresh) {
       originalRequest._retry = true;
 
       try {
@@ -172,7 +191,7 @@ api.interceptors.response.use(
 
         // Try to refresh token
         const response = await axios.post(
-          `${API_CONFIG.BASE_URL}/auth/refresh-token`,
+          `${API_CONFIG.BASE_URL}${AUTH_REFRESH_URL}`,
           { refreshToken }
         );
 
@@ -195,6 +214,9 @@ api.interceptors.response.use(
       } catch (refreshError) {
         // Refresh failed - clear tokens and redirect to login
         await clearTokens();
+        if (authFailureHandler) {
+          await authFailureHandler();
+        }
         return Promise.reject(toUserSafeError(refreshError));
       }
     }

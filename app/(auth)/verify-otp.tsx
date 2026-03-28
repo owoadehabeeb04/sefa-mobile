@@ -4,11 +4,13 @@
 
 import React from 'react';
 import { View, TouchableOpacity } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Redirect, useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { OTPVerificationScreen } from '@/src/components/auth/OTPVerificationScreen';
 import { useVerifyEmail, useResendOTP } from '@/features/auth/auth.hooks';
+import { getOnboardingStatus } from '@/features/onboarding/onboarding.service';
+import { getOnboardingRoute } from '@/features/auth/auth-routing';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function VerifyOTPRoute() {
@@ -22,15 +24,21 @@ export default function VerifyOTPRoute() {
   const verifyEmailMutation = useVerifyEmail();
   const resendOTPMutation = useResendOTP();
 
+  if (!email.trim()) {
+    return <Redirect href="/(auth)/login" />;
+  }
+
   const handleVerify = async (otp: string) => {
     try {
-      await verifyEmailMutation.mutateAsync({ email, otp });
-      // Navigate based on purpose
-      if (purpose === 'login') {
+      const response = await verifyEmailMutation.mutateAsync({ email, otp });
+
+      if (response.data?.user?.onboardingCompleted) {
         router.replace('/(tabs)');
-      } else {
-        router.replace('/(auth)/signup');
+        return;
       }
+
+      const onboardingStatus = await getOnboardingStatus();
+      router.replace(getOnboardingRoute(onboardingStatus.data));
     } catch (error) {
       throw error;
     }
@@ -60,6 +68,11 @@ export default function VerifyOTPRoute() {
         isLoading={verifyEmailMutation.isPending}
         error={
           (verifyEmailMutation.error as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message
+        }
+        errorDetails={
+          (verifyEmailMutation.error as { response?: { data?: { error?: { details?: Record<string, unknown> } } } })?.response?.data?.error?.details as
+            | { code?: string; retryAfterSeconds?: number }
+            | undefined
         }
       />
     </View>

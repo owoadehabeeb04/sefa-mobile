@@ -160,7 +160,7 @@ export default function NotificationDetailScreen() {
         {(amountText || notification.category || notification.transactionType) && (
           <View
             className="mx-5 rounded-2xl p-4 mb-4"
-            style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}
+            style={{ backgroundColor: colors.backgroundSecondary, borderWidth: 1, borderColor: colors.border }}
           >
             <Text className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: colors.textSecondary }}>
               Transaction Details

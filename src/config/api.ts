@@ -72,7 +72,9 @@ export const API_ENDPOINTS = {
     REGISTER: '/auth/register',
     LOGIN: '/auth/login',
     VERIFY_EMAIL: '/auth/verify-email',
+    VERIFY_PASSWORD_RESET_OTP: '/auth/verify-password-reset-otp',
     RESEND_OTP: '/auth/resend-otp',
+    RESEND_PASSWORD_RESET_OTP: '/auth/resend-password-reset-otp',
     FORGOT_PASSWORD: '/auth/forgot-password',
     RESET_PASSWORD: '/auth/reset-password',
     REFRESH_TOKEN: '/auth/refresh-token',
@@ -83,7 +85,6 @@ export const API_ENDPOINTS = {
   
   // Onboarding
   ONBOARDING: {
-    SETUP_PROFILE: '/onboarding/profile',
     RECORD_CONSENT: '/onboarding/consent',
     COMPLETE: '/onboarding/complete',
   },

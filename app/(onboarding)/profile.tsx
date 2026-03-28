@@ -1,7 +1,7 @@
 /**
- * Financial Profile Onboarding Route
+ * Onboarding Setup Route
  */
 
-import FinancialProfileScreen from '@/src/screens/onboarding/FinancialProfileScreen';
+import OnboardingSetupScreen from '@/src/screens/onboarding/FinancialProfileScreen';
 
-export default FinancialProfileScreen;
+export default OnboardingSetupScreen;

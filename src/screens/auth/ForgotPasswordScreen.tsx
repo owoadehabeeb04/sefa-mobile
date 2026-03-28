@@ -15,7 +15,6 @@ import { useForgotPassword } from '@/features/auth/auth.hooks';
 import { validateEmail } from '@/utils/validators';
 import { Ionicons } from '@expo/vector-icons';
 import { sefaLogoSvg } from '@/assets/illustrations';
-import axios from 'axios';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -48,15 +47,14 @@ export default function ForgotPasswordScreen() {
     setError('');
 
     try {
-      await forgotPasswordMutation.mutateAsync({ email });
-      showToast('OTP sent to your email', 'success');
+      const response = await forgotPasswordMutation.mutateAsync({ email });
+      showToast(response.message || 'OTP sent to your email', 'success');
       router.push({
         pathname: '/(auth)/reset-password',
         params: { email },
       });
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { error?: { message?: string } } } };
-      console.log('axios error from server', axiosError)
       const errorMessage = axiosError?.response?.data?.error?.message || 'Failed to send OTP';
       setError(errorMessage);
       showToast(errorMessage, 'error');

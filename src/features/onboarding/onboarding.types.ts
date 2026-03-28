@@ -9,4 +9,4 @@ export interface OnboardingSlide {
   illustration?: string;
 }
 
-export type OnboardingStep = 'profile' | 'consent' | 'categories' | 'complete';
+export type OnboardingStep = 'setup' | 'complete';
