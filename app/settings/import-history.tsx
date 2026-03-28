@@ -21,6 +21,12 @@ const getStatusColor = (status: string) => {
       return colors.warning;
     case 'processing':
       return colors.info;
+    case 'needs_bank_selection':
+      return colors.warning;
+    case 'needs_review':
+      return colors.primary;
+    case 'importing':
+      return colors.info;
     case 'failed':
       return colors.error;
     case 'undone':
@@ -120,6 +126,31 @@ const ImportJobCard = ({ job, onPress }: { job: ImportJob; onPress: () => void }
   const detectedBank =
     job.detectedBankDisplayName ||
     (job.detectedBank && job.detectedBank !== 'unknown' ? job.detectedBank : null);
+  const isDraftStage = ['needs_bank_selection', 'needs_review', 'importing'].includes(job.status);
+  const badgeLabel =
+    job.status === 'needs_bank_selection'
+      ? 'Choose bank'
+      : job.status === 'needs_review'
+        ? 'Review required'
+        : job.status === 'importing'
+          ? 'Importing'
+          : null;
+  const firstMetricLabel = isDraftStage ? 'Draft Rows' : 'Imported';
+  const firstMetricValue = isDraftStage
+    ? job.draftSummary?.totalRows ?? job.totalTransactions ?? 0
+    : job.importedCount ?? 0;
+  const secondMetricLabel = isDraftStage ? 'Included' : 'Duplicates';
+  const secondMetricValue = isDraftStage
+    ? job.draftSummary?.includedRows ?? 0
+    : job.duplicateCount ?? 0;
+  const thirdMetricLabel = isDraftStage ? 'Flagged' : 'Skipped';
+  const thirdMetricValue = isDraftStage
+    ? job.draftSummary?.flaggedRows ?? 0
+    : job.skippedCount ?? 0;
+  const fourthMetricLabel = isDraftStage ? 'Low Conf.' : 'Errors';
+  const fourthMetricValue = isDraftStage
+    ? job.draftSummary?.lowConfidenceRows ?? 0
+    : job.errorCount ?? 0;
 
   return (
     <TouchableOpacity
@@ -132,7 +163,7 @@ const ImportJobCard = ({ job, onPress }: { job: ImportJob; onPress: () => void }
         <Text className="text-lg font-semibold" style={{ color: colors.text }}>
           {getSourceLabel(job.source)}
         </Text>
-        {job.needsReview && <MetaChip label="Review needed" tint="#FFF4E5" />}
+        {badgeLabel ? <MetaChip label={badgeLabel} tint={job.status === 'needs_review' ? '#EEF2FF' : '#FFF4E5'} /> : null}
       </View>
 
       <View className="flex-row items-center justify-between mb-3">
@@ -162,13 +193,13 @@ const ImportJobCard = ({ job, onPress }: { job: ImportJob; onPress: () => void }
       </View>
 
       <View className="flex-row flex-wrap justify-between mt-2">
-        <Metric label="Imported" value={job.importedCount ?? 0} />
-        <Metric label="Duplicates" value={job.duplicateCount ?? 0} />
-        <Metric label="Skipped" value={job.skippedCount ?? 0} />
-        <Metric label="Errors" value={job.errorCount ?? 0} />
+        <Metric label={firstMetricLabel} value={firstMetricValue} />
+        <Metric label={secondMetricLabel} value={secondMetricValue} />
+        <Metric label={thirdMetricLabel} value={thirdMetricValue} />
+        <Metric label={fourthMetricLabel} value={fourthMetricValue} />
       </View>
 
-      {(job.status === 'queued' || job.status === 'processing') && (
+      {['queued', 'processing', 'needs_bank_selection', 'importing'].includes(job.status) && (
         <View className="mt-2 px-3 py-3 rounded-2xl" style={{ backgroundColor: colors.background }}>
           <Text className="text-xs" style={{ color: colors.textSecondary }}>
             {formatStage(job.stage)} • {job.progress ?? 0}%

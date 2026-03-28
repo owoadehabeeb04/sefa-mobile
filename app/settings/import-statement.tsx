@@ -72,7 +72,7 @@ export default function ImportStatementScreen() {
       });
 
       const importJobId = response.data?.importJobId;
-      setToastMessage('Statement uploaded successfully');
+      setToastMessage('Statement uploaded. Review draft is on the way.');
       setToastType('success');
       setShowToast(true);
 
@@ -109,8 +109,9 @@ export default function ImportStatementScreen() {
           <View className="flex-row items-start">
             <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
             <Text className="text-sm ml-2 flex-1" style={{ color: colors.textSecondary }}>
-              Upload a CSV or PDF statement to import transactions. If a PDF scan is messy, you can
-              add an optional bank hint and the last 4 account digits to improve detection.
+              Upload a CSV or PDF statement to build a review draft first. CSV works best, digital
+              PDFs are supported, and scanned PDFs may need more manual cleanup before anything is
+              imported.
             </Text>
           </View>
         </View>
@@ -195,7 +196,7 @@ export default function ImportStatementScreen() {
 
         <View className="mb-6">
           <Button
-            title={uploadStatement.isPending ? 'Uploading...' : 'Upload Statement'}
+            title={uploadStatement.isPending ? 'Uploading...' : 'Upload for Review'}
             onPress={handleUpload}
             disabled={uploadStatement.isPending}
             loading={uploadStatement.isPending}
@@ -206,7 +207,7 @@ export default function ImportStatementScreen() {
           <View className="items-center">
             <ActivityIndicator size="small" color={colors.primary} />
             <Text className="text-sm mt-2" style={{ color: colors.textSecondary }}>
-              Processing upload...
+              Creating your draft import...
             </Text>
           </View>
         )}
