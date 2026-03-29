@@ -18,6 +18,7 @@ interface AuthState {
   refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  didRestoreSession: boolean;
   
   // Actions
   setAuth: (user: User, token: string, refreshToken: string) => Promise<void>;
@@ -33,6 +34,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   refreshToken: null,
   isAuthenticated: false,
   isLoading: true,
+  didRestoreSession: false,
 
   initializeAuth: async () => {
     try {
@@ -45,6 +47,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           refreshToken: storedRefreshToken,
           isAuthenticated: true,
           isLoading: false,
+          didRestoreSession: true,
         });
       } else {
         await clearTokens();
@@ -53,6 +56,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           refreshToken: null,
           isAuthenticated: false,
           isLoading: false,
+          didRestoreSession: false,
         });
       }
     } catch (error) {
@@ -62,6 +66,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         refreshToken: null,
         isAuthenticated: false,
         isLoading: false,
+        didRestoreSession: false,
       });
     }
   },
@@ -77,6 +82,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         refreshToken,
         isAuthenticated: true,
         isLoading: false,
+        didRestoreSession: false,
       });
     } catch (error) {
       console.error('Failed to store authentication tokens:', error);
@@ -105,6 +111,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
+      didRestoreSession: false,
     });
   },
 
@@ -116,6 +123,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
+      didRestoreSession: false,
     });
   },
 }));
@@ -127,5 +135,6 @@ registerAuthFailureHandler(async () => {
     refreshToken: null,
     isAuthenticated: false,
     isLoading: false,
+    didRestoreSession: false,
   });
 });

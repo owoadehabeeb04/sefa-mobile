@@ -12,6 +12,7 @@ import { useGroupedCategories, useCreateCategory, useDeleteCategory, useSyncCate
 import { Select } from '@/components/common/Select';
 import { Button } from '@/components/common/Button';
 import { Toast } from '@/components/common/Toast';
+import { AnimatedListItem, AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 
 const colors = Colors.light;
 
@@ -47,7 +48,7 @@ const COLOR_OPTIONS = [
 
 export default function CategoriesScreen() {
   const router = useRouter();
-  const { data: groupedCategories, isLoading, refetch } = useGroupedCategories();
+  const { data: groupedCategories } = useGroupedCategories();
   const { mutateAsync: createCategory, isPending: isCreating } = useCreateCategory();
   const { mutateAsync: deleteCategory, isPending: isDeleting } = useDeleteCategory();
   const { mutateAsync: syncCategories, isPending: isSyncing } = useSyncCategories();
@@ -133,9 +134,11 @@ export default function CategoriesScreen() {
     }
   };
 
-  const renderCategoryItem = (category: any) => (
-    <View
+  const renderCategoryItem = (category: any, index: number, total: number) => (
+    <AnimatedListItem
       key={category.id}
+      index={index}
+      total={total}
       className="flex-row items-center py-3 px-4 rounded-xl mb-2"
       style={{ backgroundColor: colors.backgroundSecondary }}
     >
@@ -166,16 +169,13 @@ export default function CategoriesScreen() {
           <Ionicons name="trash-outline" size={20} color={colors.error} />
         </TouchableOpacity>
       )}
-    </View>
+    </AnimatedListItem>
   );
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
-      <View
-        className="flex-row items-center px-5 py-4 border-b"
-        style={{ borderBottomColor: colors.border }}
-      >
+      <FadeUp className="flex-row items-center px-5 py-4 border-b" style={{ borderBottomColor: colors.border }}>
         <TouchableOpacity onPress={() => router.back()} className="mr-4">
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
@@ -193,7 +193,7 @@ export default function CategoriesScreen() {
             color={isSyncing ? colors.textTertiary : colors.primary}
           />
         </TouchableOpacity>
-      </View>
+      </FadeUp>
 
       <ScrollView
         className="flex-1"
@@ -208,7 +208,8 @@ export default function CategoriesScreen() {
       >
         {/* Add Category Form */}
         {showAddForm && (
-          <View
+          <AnimatedScreenSection
+            index={0}
             className="p-5 rounded-2xl mb-6"
             style={{ backgroundColor: colors.primaryBackground }}
           >
@@ -279,11 +280,11 @@ export default function CategoriesScreen() {
                 className="flex-1 ml-2"
               />
             </View>
-          </View>
+          </AnimatedScreenSection>
         )}
 
         {/* Expense Categories */}
-        <View className="mb-6">
+        <AnimatedScreenSection index={1} className="mb-6">
           <View className="flex-row items-center justify-between mb-3">
             <Text className="text-sm font-semibold" style={{ color: colors.textTertiary }}>
               EXPENSE CATEGORIES ({groupedCategories?.expense?.length || 0})
@@ -303,16 +304,18 @@ export default function CategoriesScreen() {
               </TouchableOpacity>
             )}
           </View>
-          {groupedCategories?.expense?.map(renderCategoryItem)}
+          {groupedCategories?.expense?.map((category, index, list) =>
+            renderCategoryItem(category, index, list.length)
+          )}
           {(!groupedCategories?.expense || groupedCategories.expense.length === 0) && (
             <Text className="text-sm text-center py-4" style={{ color: colors.textTertiary }}>
               No expense categories yet
             </Text>
           )}
-        </View>
+        </AnimatedScreenSection>
 
         {/* Income Categories */}
-        <View className="mb-6">
+        <AnimatedScreenSection index={2} className="mb-6">
           <View className="flex-row items-center justify-between mb-3">
             <Text className="text-sm font-semibold" style={{ color: colors.textTertiary }}>
               INCOME CATEGORIES ({groupedCategories?.income?.length || 0})
@@ -332,13 +335,15 @@ export default function CategoriesScreen() {
               </TouchableOpacity>
             )}
           </View>
-          {groupedCategories?.income?.map(renderCategoryItem)}
+          {groupedCategories?.income?.map((category, index, list) =>
+            renderCategoryItem(category, index, list.length)
+          )}
           {(!groupedCategories?.income || groupedCategories.income.length === 0) && (
             <Text className="text-sm text-center py-4" style={{ color: colors.textTertiary }}>
               No income categories yet
             </Text>
           )}
-        </View>
+        </AnimatedScreenSection>
       </ScrollView>
 
       <Toast

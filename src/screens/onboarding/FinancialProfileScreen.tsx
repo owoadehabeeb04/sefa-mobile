@@ -22,6 +22,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Button } from '@/src/components/common/Button';
 import { Loading } from '@/src/components/common/Loading';
+import { AnimatedScreenSection, FadeUp, ScaleIn } from '@/src/components/motion';
 import { Toast, useToast } from '@/src/components/common/Toast';
 import {
   useCompleteOnboarding,
@@ -29,6 +30,7 @@ import {
   useRecordConsent,
 } from '@/features/onboarding/onboarding.hooks';
 import { useBudget, useUpdateBudget } from '@/features/budget/budget.hooks';
+import { useAppLockStore } from '@/store/appLock.store';
 import { sefaLogoSvg } from '@/assets/illustrations';
 
 const MAX_BUDGET = 50000000;
@@ -66,6 +68,7 @@ export default function OnboardingSetupScreen() {
   const { toastConfig, showToast, hideToast } = useToast();
   const { data: budgetData, isLoading: budgetLoading } = useBudget();
   const { data: onboardingData } = useOnboardingStatus();
+  const { initialize: initializeAppLock, isInitialized: appLockInitialized } = useAppLockStore();
   const updateBudgetMutation = useUpdateBudget();
   const recordConsentMutation = useRecordConsent();
   const completeOnboardingMutation = useCompleteOnboarding();
@@ -123,6 +126,15 @@ export default function OnboardingSetupScreen() {
       const completeResult = await completeOnboardingMutation.mutateAsync();
 
       if (completeResult.success) {
+        if (!appLockInitialized) {
+          await initializeAppLock();
+        }
+
+        if (!useAppLockStore.getState().settings.setupPromptCompleted) {
+          router.replace('/(onboarding)/security-setup');
+          return;
+        }
+
         router.replace('/(tabs)');
       }
     } catch (error: any) {
@@ -154,7 +166,7 @@ export default function OnboardingSetupScreen() {
           contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }}
           showsVerticalScrollIndicator={false}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 24, paddingBottom: 24 }}>
+          <ScaleIn style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 24, paddingBottom: 24 }}>
             <SvgXml xml={getLogoSvg(colors.primary)} width={40} height={42} />
             <Text
               style={{
@@ -167,31 +179,34 @@ export default function OnboardingSetupScreen() {
             >
               SEFA
             </Text>
-          </View>
+          </ScaleIn>
 
-          <Text
-            style={{
-              color: colors.text,
-              fontSize: 30,
-              lineHeight: 38,
-              fontWeight: '700',
-              marginBottom: 10,
-            }}
-          >
-            Finish your setup
-          </Text>
-          <Text
-            style={{
-              color: colors.textSecondary,
-              fontSize: 15,
-              lineHeight: 24,
-              marginBottom: 28,
-            }}
-          >
-            Add a monthly budget now if you want smarter spending guidance from the start. You can skip it and update it later in Settings.
-          </Text>
+          <FadeUp>
+            <Text
+              style={{
+                color: colors.text,
+                fontSize: 30,
+                lineHeight: 38,
+                fontWeight: '700',
+                marginBottom: 10,
+              }}
+            >
+              Finish your setup
+            </Text>
+            <Text
+              style={{
+                color: colors.textSecondary,
+                fontSize: 15,
+                lineHeight: 24,
+                marginBottom: 28,
+              }}
+            >
+              Add a monthly budget now if you want smarter spending guidance from the start. You can skip it and update it later in Settings.
+            </Text>
+          </FadeUp>
 
-          <View
+          <AnimatedScreenSection
+            index={0}
             style={{
               backgroundColor: colors.primaryBackground,
               borderRadius: 24,
@@ -293,9 +308,10 @@ export default function OnboardingSetupScreen() {
                 </Text>
               </>
             )}
-          </View>
+          </AnimatedScreenSection>
 
-          <View
+          <AnimatedScreenSection
+            index={1}
             style={{
               backgroundColor: colors.backgroundSecondary,
               borderRadius: 24,
@@ -372,25 +388,28 @@ export default function OnboardingSetupScreen() {
                 I agree to SEFA analyzing my financial data to provide budgeting and insight features.
               </Text>
             </TouchableOpacity>
-          </View>
+          </AnimatedScreenSection>
 
-          <Button
-            title="Finish Setup"
-            onPress={() => finishOnboarding()}
-            fullWidth
-            size="large"
-            disabled={isSubmitting}
-          />
+          <AnimatedScreenSection index={2}>
+            <Button
+              title="Finish Setup"
+              onPress={() => finishOnboarding()}
+              fullWidth
+              size="large"
+              disabled={isSubmitting}
+            />
+          </AnimatedScreenSection>
 
-          <Button
-            title="Skip Budget for Now"
-            onPress={() => finishOnboarding({ skipBudget: true })}
-            fullWidth
-            size="large"
-            variant="outline"
-            disabled={isSubmitting}
-            className="mt-3"
-          />
+          <AnimatedScreenSection index={3} variant="slide" style={{ marginTop: 12 }}>
+            <Button
+              title="Skip Budget for Now"
+              onPress={() => finishOnboarding({ skipBudget: true })}
+              fullWidth
+              size="large"
+              variant="outline"
+              disabled={isSubmitting}
+            />
+          </AnimatedScreenSection>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

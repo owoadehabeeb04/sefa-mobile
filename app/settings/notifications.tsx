@@ -12,6 +12,7 @@ import { Toast } from '@/components/common/Toast';
 import { useAuthStore } from '@/store/auth.store';
 import api from '@/services/api';
 import { API_ENDPOINTS } from '@/config/api';
+import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 
 const colors = Colors.light;
 
@@ -92,10 +93,7 @@ export default function NotificationsSettingsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
-      <View
-        className="flex-row items-center px-5 py-4 border-b"
-        style={{ borderBottomColor: colors.border }}
-      >
+      <FadeUp className="flex-row items-center px-5 py-4 border-b" style={{ borderBottomColor: colors.border }}>
         <TouchableOpacity onPress={() => router.back()} className="mr-4">
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
@@ -114,19 +112,21 @@ export default function NotificationsSettingsScreen() {
             {isSaving ? 'Saving...' : 'Save'}
           </Text>
         </TouchableOpacity>
-      </View>
+      </FadeUp>
 
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }}>
-        <SettingItem
-          icon="notifications-outline"
-          title="Enable Notifications"
-          subtitle="Receive app notifications"
-          value={notificationsEnabled}
-          onValueChange={setNotificationsEnabled}
-        />
+        <AnimatedScreenSection index={0}>
+          <SettingItem
+            icon="notifications-outline"
+            title="Enable Notifications"
+            subtitle="Receive app notifications"
+            value={notificationsEnabled}
+            onValueChange={setNotificationsEnabled}
+          />
+        </AnimatedScreenSection>
 
         {notificationsEnabled && (
-          <>
+          <AnimatedScreenSection index={1}>
             <SettingItem
               icon="time-outline"
               title="Expense Reminders"
@@ -150,7 +150,7 @@ export default function NotificationsSettingsScreen() {
               value={weeklyReports}
               onValueChange={setWeeklyReports}
             />
-          </>
+          </AnimatedScreenSection>
         )}
       </ScrollView>
 

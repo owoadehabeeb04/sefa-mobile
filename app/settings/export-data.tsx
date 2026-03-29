@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +15,7 @@ import { Toast } from '@/components/common/Toast';
 import { getLocalExpenses } from '@/features/expenses/expense.service';
 import { getLocalIncome } from '@/features/income/income.service';
 import { getLocalCategories } from '@/features/categories/category.service';
+import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 
 const colors = Colors.light;
 
@@ -96,7 +97,7 @@ export default function ExportDataScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
-      <View
+      <FadeUp
         className="flex-row items-center px-5 py-4 border-b"
         style={{ borderBottomColor: colors.border }}
       >
@@ -106,10 +107,11 @@ export default function ExportDataScreen() {
         <Text className="text-xl font-bold flex-1" style={{ color: colors.text }}>
           Export Data
         </Text>
-      </View>
+      </FadeUp>
 
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }}>
-        <View
+        <AnimatedScreenSection
+          index={0}
           className="p-5 rounded-2xl mb-6"
           style={{ backgroundColor: colors.primaryBackground }}
         >
@@ -119,9 +121,10 @@ export default function ExportDataScreen() {
               Export all your financial data to a JSON file. This includes all transactions, categories, and settings.
             </Text>
           </View>
-        </View>
+        </AnimatedScreenSection>
 
-        <View
+        <AnimatedScreenSection
+          index={1}
           className="p-5 rounded-2xl mb-6"
           style={{ backgroundColor: colors.backgroundSecondary }}
         >
@@ -148,13 +151,15 @@ export default function ExportDataScreen() {
               • Export metadata (date, version)
             </Text>
           </View>
-        </View>
+        </AnimatedScreenSection>
 
-        <Button
-          title="Export Data"
-          onPress={handleExport}
-          loading={isExporting}
-        />
+        <AnimatedScreenSection index={2}>
+          <Button
+            title="Export Data"
+            onPress={handleExport}
+            loading={isExporting}
+          />
+        </AnimatedScreenSection>
       </ScrollView>
 
       <Toast

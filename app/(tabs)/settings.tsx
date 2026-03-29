@@ -10,12 +10,16 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useAuthStore } from '@/store/auth.store';
+import { useAppLockStore } from '@/store/appLock.store';
+import { describeAppLockMethod } from '@/features/security/appLock.service';
+import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 
 export default function SettingsScreen() {
   const colors = Colors.light;
   const router = useRouter();
   const queryClient = useQueryClient();
   const { clearAuth, user } = useAuthStore();
+  const { settings: appLockSettings, biometricStatus } = useAppLockStore();
 
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -85,17 +89,18 @@ export default function SettingsScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}>
         {/* Header */}
-        <View className="pt-4 pb-6">
+        <FadeUp className="pt-4 pb-6">
           <Text className="text-2xl font-bold" style={{ color: colors.text }}>
             Settings
           </Text>
           <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
             Manage your account and preferences
           </Text>
-        </View>
+        </FadeUp>
 
         {/* User Card */}
-        <View
+        <AnimatedScreenSection
+          index={0}
           className="p-5 rounded-2xl mb-6"
           style={{ backgroundColor: colors.primaryBackground }}
         >
@@ -117,9 +122,10 @@ export default function SettingsScreen() {
               </Text>
             </View>
           </View>
-        </View>
+        </AnimatedScreenSection>
 
         {/* Settings Sections */}
+        <AnimatedScreenSection index={1}>
         <View className="mb-6">
           <Text
             className="text-xs font-semibold mb-3 px-1"
@@ -152,7 +158,9 @@ export default function SettingsScreen() {
             onPress={() => router.push('/settings/sync-history')}
           />
         </View>
+        </AnimatedScreenSection>
 
+        <AnimatedScreenSection index={2}>
         <View className="mb-6">
           <Text
             className="text-xs font-semibold mb-3 px-1"
@@ -161,13 +169,21 @@ export default function SettingsScreen() {
             SECURITY
           </Text>
           <SettingsItem
+            icon="shield-checkmark-outline"
+            title="App Lock & PIN"
+            subtitle={describeAppLockMethod(appLockSettings, biometricStatus)}
+            onPress={() => router.push('/settings/app-lock')}
+          />
+          <SettingsItem
             icon="key-outline"
             title="Change Password"
             subtitle="Update your password"
             onPress={() => router.push('/settings/change-password')}
           />
         </View>
+        </AnimatedScreenSection>
 
+        <AnimatedScreenSection index={3}>
         <View className="mb-6">
           <Text
             className="text-xs font-semibold mb-3 px-1"
@@ -176,44 +192,37 @@ export default function SettingsScreen() {
             DATA
           </Text>
           <SettingsItem
-            icon="cloud-upload-outline"
-            title="Import Statements"
-            subtitle="Upload bank statements"
-            onPress={() => router.push('/settings/import-statement')}
-          />
-          <SettingsItem
-            icon="time-outline"
-            title="Import History"
-            subtitle="Review past imports"
-            onPress={() => router.push('/settings/import-history')}
-          />
-          <SettingsItem
             icon="trash-outline"
             title="Clear Data"
             subtitle="Delete all transactions"
             onPress={() => router.push('/settings/clear-data')}
           />
         </View>
+        </AnimatedScreenSection>
 
         {/* Logout Button */}
-        <TouchableOpacity
-          className="flex-row items-center justify-center py-4 px-4 rounded-xl mb-4"
-          style={{ backgroundColor: `${colors.error}15` }}
-          onPress={handleLogout}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="log-out-outline" size={20} color={colors.error} />
-          <Text className="text-base font-semibold ml-2" style={{ color: colors.error }}>
-            Logout
-          </Text>
-        </TouchableOpacity>
+        <AnimatedScreenSection index={4}>
+          <TouchableOpacity
+            className="flex-row items-center justify-center py-4 px-4 rounded-xl mb-4"
+            style={{ backgroundColor: `${colors.error}15` }}
+            onPress={handleLogout}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="log-out-outline" size={20} color={colors.error} />
+            <Text className="text-base font-semibold ml-2" style={{ color: colors.error }}>
+              Logout
+            </Text>
+          </TouchableOpacity>
+        </AnimatedScreenSection>
 
         {/* App Version */}
-        <View className="items-center py-4">
-          <Text className="text-xs" style={{ color: colors.textTertiary }}>
-            SEFA v1.0.0
-          </Text>
-        </View>
+        <AnimatedScreenSection index={5} variant="slide">
+          <View className="items-center py-4">
+            <Text className="text-xs" style={{ color: colors.textTertiary }}>
+              SEFA v1.0.0
+            </Text>
+          </View>
+        </AnimatedScreenSection>
       </ScrollView>
     </SafeAreaView>
   );

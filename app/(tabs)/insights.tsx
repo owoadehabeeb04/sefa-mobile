@@ -26,6 +26,7 @@ import {
   InsightsSparkline,
   InsightsTrendChart,
 } from '@/features/insights/insights.charts';
+import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 import type {
   InsightAction,
   InsightAnomalyAlert,
@@ -77,28 +78,32 @@ function Section({
   title,
   subtitle,
   children,
+  index = 0,
 }: {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
+  index?: number;
 }) {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
 
   return (
-    <View className="mb-6">
-      <View className="mb-3">
-        <Text className="text-lg font-bold" style={{ color: colors.text }}>
-          {title}
-        </Text>
-        {!!subtitle && (
-          <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
-            {subtitle}
+    <AnimatedScreenSection index={index}>
+      <View className="mb-6">
+        <View className="mb-3">
+          <Text className="text-lg font-bold" style={{ color: colors.text }}>
+            {title}
           </Text>
-        )}
+          {!!subtitle && (
+            <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
+              {subtitle}
+            </Text>
+          )}
+        </View>
+        {children}
       </View>
-      {children}
-    </View>
+    </AnimatedScreenSection>
   );
 }
 
@@ -258,16 +263,18 @@ function TextBlock({
   section,
   accent,
   children,
+  index = 0,
 }: {
   section: InsightTextSection;
   accent?: string;
   children?: React.ReactNode;
+  index?: number;
 }) {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
 
   return (
-    <Section title={section.title}>
+    <Section title={section.title} index={index}>
       <Surface accent={accent}>
         {section.lines.map((line) => (
           <Text key={line} className="text-sm mb-2" style={{ color: colors.text }}>
@@ -412,29 +419,31 @@ export default function InsightsScreen() {
           />
         }
       >
-        <View className="mb-6">
+        <FadeUp className="mb-6">
           <Text className="text-2xl font-bold" style={{ color: colors.text }}>
             Money Insight
           </Text>
           <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
             See your money in charts or in simple words.
           </Text>
-        </View>
+        </FadeUp>
 
-        <View
+        <AnimatedScreenSection
+          index={0}
           className="flex-row rounded-3xl p-1 mb-6"
           style={{ backgroundColor: colors.backgroundSecondary }}
         >
           <TabButton label="Visual" active={activeTab === 'visual'} onPress={() => setActiveTab('visual')} />
           <View className="w-2" />
           <TabButton label="Text" active={activeTab === 'text'} onPress={() => setActiveTab('text')} />
-        </View>
+        </AnimatedScreenSection>
 
         {activeTab === 'visual' ? (
           <>
             <Section
               title="Main Update"
               subtitle="Quick look at where your money may land before month end."
+              index={1}
             >
               <Surface accent={`${getMainUpdateColor(hub.visuals.mainUpdate.status, colors)}55`}>
                 <View className="flex-row items-start justify-between">
@@ -481,6 +490,7 @@ export default function InsightsScreen() {
             <Section
               title="Things To Check"
               subtitle="Only the few items that need your eye now."
+              index={2}
             >
               {hub.visuals.thingsToCheck.length ? (
                 hub.visuals.thingsToCheck.map((alert) => (
@@ -499,6 +509,7 @@ export default function InsightsScreen() {
             <Section
               title="Where Your Money Is Going"
               subtitle="Top places taking money this month."
+              index={3}
             >
               <Surface accent={`${colors.primary}25`}>
                 <InsightsDonutChart
@@ -543,6 +554,7 @@ export default function InsightsScreen() {
             <Section
               title="This Month Trend"
               subtitle="See how spending is moving and what may happen next."
+              index={4}
             >
               <Surface accent={`${colors.info}25`}>
                 <View className="flex-row flex-wrap mb-2">
@@ -580,6 +592,7 @@ export default function InsightsScreen() {
             <Section
               title="Budget Use"
               subtitle="The budget areas getting close to the line."
+              index={5}
             >
               {hub.visuals.budgetUsage.length ? (
                 hub.visuals.budgetUsage.map((entry) => {
@@ -626,19 +639,20 @@ export default function InsightsScreen() {
             <Section
               title="Ways To Save"
               subtitle="Simple actions with the biggest money effect."
+              index={6}
             >
               <ActionCards actions={hub.visuals.savingsActions} />
             </Section>
           </>
         ) : (
           <>
-            <TextBlock section={hub.textView.mainUpdate} accent={`${colors.primary}25`} />
+            <TextBlock section={hub.textView.mainUpdate} accent={`${colors.primary}25`} index={1} />
 
-            <TextBlock section={hub.textView.thingsToCheck} accent={`${colors.warning}35`} />
+            <TextBlock section={hub.textView.thingsToCheck} accent={`${colors.warning}35`} index={2} />
 
-            <TextBlock section={hub.textView.whereMoneyGoes} accent={`${colors.info}25`} />
+            <TextBlock section={hub.textView.whereMoneyGoes} accent={`${colors.info}25`} index={3} />
 
-            <TextBlock section={hub.textView.thisMonthTrend} accent={`${colors.success}25`}>
+            <TextBlock section={hub.textView.thisMonthTrend} accent={`${colors.success}25`} index={4}>
               <View className="flex-row flex-wrap mt-4">
                 <TouchableOpacity
                   onPress={() => handleScenario('cut-risk')}
@@ -695,9 +709,9 @@ export default function InsightsScreen() {
               )}
             </TextBlock>
 
-            <TextBlock section={hub.textView.waysToSave} accent={`${colors.primary}25`} />
+            <TextBlock section={hub.textView.waysToSave} accent={`${colors.primary}25`} index={5} />
 
-            <TextBlock section={hub.textView.askSefa} accent={`${colors.primary}45`}>
+            <TextBlock section={hub.textView.askSefa} accent={`${colors.primary}45`} index={6}>
               <View className="flex-row flex-wrap mt-4">
                 {quickPrompts.map((prompt) => (
                   <TouchableOpacity
@@ -756,7 +770,7 @@ export default function InsightsScreen() {
             </TextBlock>
 
             {!!copilot.data && (
-              <Section title="SEFA Answer">
+              <Section title="SEFA Answer" index={7}>
                 <Surface accent={`${colors.success}35`}>
                   <View className="flex-row items-center justify-between">
                     <Text className="text-sm font-semibold" style={{ color: colors.text }}>

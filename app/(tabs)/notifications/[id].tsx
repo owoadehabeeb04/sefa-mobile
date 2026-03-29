@@ -18,6 +18,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useNotification, useDeleteNotification } from '@/features/notifications/notification.hooks';
 import type { NotificationIcon } from '@/features/notifications/notification.types';
+import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 
 const ICON_MAP: Record<NotificationIcon, { name: string; bg: string; color: string }> = {
   alert: { name: 'warning-outline', bg: '#FEF3C7', color: '#D97706' },
@@ -124,7 +125,7 @@ export default function NotificationDetailScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
-      <View
+      <FadeUp
         className="flex-row items-center justify-between px-5 py-4 border-b"
         style={{ borderBottomColor: colors.border }}
       >
@@ -137,11 +138,11 @@ export default function NotificationDetailScreen() {
         <TouchableOpacity onPress={handleDelete} disabled={deleteNotification.isPending}>
           <Ionicons name="trash-outline" size={20} color="#DC2626" />
         </TouchableOpacity>
-      </View>
+      </FadeUp>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 48 }} showsVerticalScrollIndicator={false}>
         {/* Icon + Title block */}
-        <View className="items-center px-6 pt-8 pb-6">
+        <AnimatedScreenSection index={0} className="items-center px-6 pt-8 pb-6">
           <View
             className="w-16 h-16 rounded-2xl items-center justify-center mb-4"
             style={{ backgroundColor: iconConfig.bg }}
@@ -154,11 +155,12 @@ export default function NotificationDetailScreen() {
           <Text className="text-sm text-center leading-5" style={{ color: colors.textSecondary }}>
             {notification.message}
           </Text>
-        </View>
+        </AnimatedScreenSection>
 
         {/* Transaction details card */}
         {(amountText || notification.category || notification.transactionType) && (
-          <View
+          <AnimatedScreenSection
+            index={1}
             className="mx-5 rounded-2xl p-4 mb-4"
             style={{ backgroundColor: colors.backgroundSecondary, borderWidth: 1, borderColor: colors.border }}
           >
@@ -203,12 +205,13 @@ export default function NotificationDetailScreen() {
                 </Text>
               </TouchableOpacity>
             )}
-          </View>
+          </AnimatedScreenSection>
         )}
 
         {/* AI Advice card */}
         {notification.aiAdvice ? (
-          <View
+          <AnimatedScreenSection
+            index={2}
             className="mx-5 rounded-2xl p-4 mb-4"
             style={{ backgroundColor: `${colors.primary}08`, borderWidth: 1, borderColor: `${colors.primary}20` }}
           >
@@ -226,12 +229,13 @@ export default function NotificationDetailScreen() {
             <Text className="text-sm leading-5" style={{ color: colors.text }}>
               {notification.aiAdvice}
             </Text>
-          </View>
+          </AnimatedScreenSection>
         ) : null}
 
         {/* Risk score */}
         {notification.riskScore != null && notification.riskScore > 0 ? (
-          <View
+          <AnimatedScreenSection
+            index={3}
             className="mx-5 rounded-2xl p-4 mb-4"
             style={{ backgroundColor: colors.backgroundSecondary, borderWidth: 1, borderColor: colors.border }}
           >
@@ -260,7 +264,7 @@ export default function NotificationDetailScreen() {
                 {notification.riskScore}
               </Text>
             </View>
-          </View>
+          </AnimatedScreenSection>
         ) : null}
 
         {/* Metadata */}

@@ -9,6 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { OTPInput } from '@/src/components/common/OTPInput';
 import { Button } from '@/src/components/common/Button';
 import { Loading } from '@/src/components/common/Loading';
+import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 import { maskEmail } from '@/src/utils/formatters';
 
 interface OTPErrorDetails {
@@ -159,7 +160,7 @@ export const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({
       className="flex-1 px-6 pt-8"
       style={{ backgroundColor: colors.background }}
     >
-      <View className="mb-8">
+      <FadeUp style={{ marginBottom: 32 }}>
         <Text
           className="text-3xl font-bold mb-2"
           style={{ color: colors.text }}
@@ -172,18 +173,20 @@ export const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({
         >
           {copy.subtitle} <Text style={{ color: colors.text, fontWeight: '600' }}>{maskedEmail}</Text>
         </Text>
-      </View>
+      </FadeUp>
 
-      <OTPInput
-        length={6}
-        value={otp}
-        onChangeOTP={setOtp}
-        error={submitError}
-        disabled={isLoading || isTemporarilyLocked}
-        clearSignal={clearSignal}
-      />
+      <AnimatedScreenSection index={0}>
+        <OTPInput
+          length={6}
+          value={otp}
+          onChangeOTP={setOtp}
+          error={submitError}
+          disabled={isLoading || isTemporarilyLocked}
+          clearSignal={clearSignal}
+        />
+      </AnimatedScreenSection>
 
-      <View className="mt-8">
+      <AnimatedScreenSection index={1} style={{ marginTop: 32 }}>
         <Button
           title={copy.buttonLabel}
           onPress={() => submitOtp(otp)}
@@ -192,9 +195,9 @@ export const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({
           disabled={!hasCompleteOtp || isLoading || isTemporarilyLocked}
           loading={isLoading}
         />
-      </View>
+      </AnimatedScreenSection>
 
-      <View className="mt-6 items-center">
+      <AnimatedScreenSection index={2} variant="slide" style={{ marginTop: 24, alignItems: 'center' }}>
         {timer > 0 ? (
           <Text
             className="text-sm text-center"
@@ -212,21 +215,23 @@ export const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({
             </Text>
           </TouchableOpacity>
         )}
-      </View>
+      </AnimatedScreenSection>
 
       {isTemporarilyLocked && timer > 0 && (
-        <Text
-          className="mt-3 text-sm text-center"
-          style={{ color: colors.textSecondary }}
-        >
-          Verification is temporarily paused. Request a new code when the timer ends.
-        </Text>
+        <AnimatedScreenSection index={3} style={{ marginTop: 12 }}>
+          <Text
+            className="text-sm text-center"
+            style={{ color: colors.textSecondary }}
+          >
+            Verification is temporarily paused. Request a new code when the timer ends.
+          </Text>
+        </AnimatedScreenSection>
       )}
 
       {isLoading && (
-        <View className="mt-6">
+        <AnimatedScreenSection index={4} style={{ marginTop: 24 }}>
           <Loading message={copy.loadingMessage} />
-        </View>
+        </AnimatedScreenSection>
       )}
     </View>
   );

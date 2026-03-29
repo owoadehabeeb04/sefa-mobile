@@ -4,13 +4,14 @@
  */
 
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { Transaction } from '@/features/transactions/transaction.hooks';
+import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 
 interface TransactionDetailsScreenProps {
   transaction: Transaction;
@@ -81,7 +82,7 @@ export default function TransactionDetailsScreen({ transaction }: TransactionDet
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
-      <View
+      <FadeUp
         className="flex-row items-center px-5 py-4 border-b"
         style={{ borderBottomColor: colors.border }}
       >
@@ -91,11 +92,12 @@ export default function TransactionDetailsScreen({ transaction }: TransactionDet
         <Text className="text-xl font-bold flex-1" style={{ color: colors.text }}>
           Transaction Details
         </Text>
-      </View>
+      </FadeUp>
 
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }}>
         {/* Amount Card */}
-        <View
+        <AnimatedScreenSection
+          index={0}
           className="p-6 rounded-2xl mb-6 items-center"
           style={{ backgroundColor: colors.primaryBackground }}
         >
@@ -126,10 +128,11 @@ export default function TransactionDetailsScreen({ transaction }: TransactionDet
               {isExpense ? 'Expense' : 'Income'}
             </Text>
           </View>
-        </View>
+        </AnimatedScreenSection>
 
         {/* Details Section */}
-        <View
+        <AnimatedScreenSection
+          index={1}
           className="rounded-2xl overflow-hidden mb-6"
           style={{ backgroundColor: colors.backgroundSecondary }}
         >
@@ -254,11 +257,12 @@ export default function TransactionDetailsScreen({ transaction }: TransactionDet
               </View>
             </View>
           )}
-        </View>
+        </AnimatedScreenSection>
 
         {/* Category Info */}
         {transaction.category && (
-          <View
+          <AnimatedScreenSection
+            index={2}
             className="p-5 rounded-2xl mb-6"
             style={{ backgroundColor: colors.primaryBackground }}
           >
@@ -285,11 +289,12 @@ export default function TransactionDetailsScreen({ transaction }: TransactionDet
                 </Text>
               </View>
             </View>
-          </View>
+          </AnimatedScreenSection>
         )}
 
         {/* Metadata */}
-        <View
+        <AnimatedScreenSection
+          index={3}
           className="p-4 rounded-2xl"
           style={{ backgroundColor: colors.backgroundSecondary }}
         >
@@ -306,7 +311,7 @@ export default function TransactionDetailsScreen({ transaction }: TransactionDet
               Last updated: {new Date((transaction as any).updatedAt).toLocaleString()}
             </Text>
           )}
-        </View>
+        </AnimatedScreenSection>
       </ScrollView>
     </SafeAreaView>
   );

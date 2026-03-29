@@ -13,12 +13,15 @@ import { Toast } from '@/components/common/Toast';
 import api from '@/services/api';
 import { API_ENDPOINTS } from '@/config/api';
 import { useAuthStore } from '@/store/auth.store';
+import { useSensitiveActionSecurity } from '@/features/security/useSensitiveActionSecurity';
+import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 
 const colors = Colors.light;
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const { requireVerification } = useSensitiveActionSecurity();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -69,6 +72,11 @@ export default function ChangePasswordScreen() {
       return;
     }
 
+    const verified = await requireVerification('change_password');
+    if (!verified) {
+      return;
+    }
+
     setIsLoading(true);
     try {
       // First verify current password by attempting login
@@ -77,7 +85,7 @@ export default function ChangePasswordScreen() {
           email: user?.email,
           password: currentPassword,
         });
-      } catch (error: any) {
+      } catch {
         setToastMessage('Current password is incorrect');
         setToastType('error');
         setShowToast(true);
@@ -147,7 +155,7 @@ export default function ChangePasswordScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
-      <View
+      <FadeUp
         className="flex-row items-center px-5 py-4 border-b"
         style={{ borderBottomColor: colors.border }}
       >
@@ -157,10 +165,11 @@ export default function ChangePasswordScreen() {
         <Text className="text-xl font-bold flex-1" style={{ color: colors.text }}>
           Change Password
         </Text>
-      </View>
+      </FadeUp>
 
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }}>
-        <View
+        <AnimatedScreenSection
+          index={0}
           className="p-5 rounded-2xl mb-6"
           style={{ backgroundColor: colors.primaryBackground }}
         >
@@ -170,8 +179,9 @@ export default function ChangePasswordScreen() {
               For security, you&apos;ll need to verify your identity with an OTP sent to your email.
             </Text>
           </View>
-        </View>
+        </AnimatedScreenSection>
 
+        <AnimatedScreenSection index={1}>
         <View className="mb-4">
           <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
             Current Password
@@ -209,7 +219,9 @@ export default function ChangePasswordScreen() {
             </TouchableOpacity>
           </View>
         </View>
+        </AnimatedScreenSection>
 
+        <AnimatedScreenSection index={2}>
         <View className="mb-4">
           <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
             New Password
@@ -250,7 +262,9 @@ export default function ChangePasswordScreen() {
             Must be at least 8 characters with uppercase, lowercase, and number
           </Text>
         </View>
+        </AnimatedScreenSection>
 
+        <AnimatedScreenSection index={3}>
         <View className="mb-6">
           <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
             Confirm New Password
@@ -288,12 +302,15 @@ export default function ChangePasswordScreen() {
             </TouchableOpacity>
           </View>
         </View>
+        </AnimatedScreenSection>
 
-        <Button
-          title="Change Password"
-          onPress={handleChangePassword}
-          loading={isLoading}
-        />
+        <AnimatedScreenSection index={4}>
+          <Button
+            title="Change Password"
+            onPress={handleChangePassword}
+            loading={isLoading}
+          />
+        </AnimatedScreenSection>
       </ScrollView>
 
       <Toast

@@ -14,6 +14,7 @@ import {
   useNotificationPreferences,
   useUpdateNotificationPreferences,
 } from '@/features/notifications/notificationPreferences.hooks';
+import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 
 const colors = Colors.light;
 
@@ -133,10 +134,7 @@ export default function NotificationPreferencesScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
-      <View
-        className="flex-row items-center px-5 py-4 border-b"
-        style={{ borderBottomColor: colors.border }}
-      >
+      <FadeUp className="flex-row items-center px-5 py-4 border-b" style={{ borderBottomColor: colors.border }}>
         <TouchableOpacity onPress={() => router.back()} className="mr-4">
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
@@ -151,147 +149,159 @@ export default function NotificationPreferencesScreen() {
             {updatePreferences.isPending ? 'Saving...' : 'Save'}
           </Text>
         </TouchableOpacity>
-      </View>
+      </FadeUp>
 
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }}>
         {isLoading && (
-          <Text className="text-sm" style={{ color: colors.textSecondary }}>
-            Loading preferences...
+          <AnimatedScreenSection index={0}>
+            <Text className="text-sm" style={{ color: colors.textSecondary }}>
+              Loading preferences...
+            </Text>
+          </AnimatedScreenSection>
+        )}
+
+        <AnimatedScreenSection index={1}>
+          <Text className="text-xs font-semibold mb-3" style={{ color: colors.textTertiary }}>
+            GENERAL
           </Text>
-        )}
-
-        <Text className="text-xs font-semibold mb-3" style={{ color: colors.textTertiary }}>
-          GENERAL
-        </Text>
-        <SettingSwitch
-          title="Enable Push Notifications"
-          subtitle="Receive notifications on this device"
-          value={pushEnabled}
-          onValueChange={setPushEnabled}
-        />
-
-        <Text className="text-xs font-semibold mb-3 mt-6" style={{ color: colors.textTertiary }}>
-          ALERT TYPES
-        </Text>
-        <SettingSwitch
-          title="Transaction Alerts"
-          subtitle="Get notified about new transactions"
-          value={transactionAlerts}
-          onValueChange={setTransactionAlerts}
-        />
-        <SettingSwitch
-          title="Budget Warnings"
-          subtitle="Alerts when you reach your budget limit"
-          value={budgetWarnings}
-          onValueChange={setBudgetWarnings}
-        />
-        <SettingSwitch
-          title="Weekly Reports"
-          subtitle="Receive weekly spending summaries"
-          value={weeklyReports}
-          onValueChange={setWeeklyReports}
-        />
-        <SettingSwitch
-          title="Goal Updates"
-          subtitle="Progress updates for your goals"
-          value={goalUpdates}
-          onValueChange={setGoalUpdates}
-        />
-        <SettingSwitch
-          title="Import Notifications"
-          subtitle="Notify when imports finish"
-          value={importNotifications}
-          onValueChange={setImportNotifications}
-        />
-
-        <Text className="text-xs font-semibold mb-3 mt-6" style={{ color: colors.textTertiary }}>
-          FREQUENCY
-        </Text>
-        <Input
-          label="Max notifications per day"
-          value={maxNotificationsPerDay}
-          onChangeText={setMaxNotificationsPerDay}
-          keyboardType="numeric"
-        />
-        <SettingSwitch
-          title="Daily Digest"
-          subtitle="Send a summary every day"
-          value={dailyDigestEnabled}
-          onValueChange={setDailyDigestEnabled}
-        />
-        {dailyDigestEnabled && (
-          <Input
-            label="Daily digest time (HH:MM)"
-            value={dailyDigestTime}
-            onChangeText={setDailyDigestTime}
-            placeholder="09:00"
+          <SettingSwitch
+            title="Enable Push Notifications"
+            subtitle="Receive notifications on this device"
+            value={pushEnabled}
+            onValueChange={setPushEnabled}
           />
-        )}
+        </AnimatedScreenSection>
 
-        <SettingSwitch
-          title="Weekly Summary"
-          subtitle="Weekly report day and time"
-          value={weeklySummaryEnabled}
-          onValueChange={setWeeklySummaryEnabled}
-        />
-        {weeklySummaryEnabled && (
-          <>
-            <Input
-              label="Weekly summary day (0=Sun, 6=Sat)"
-              value={weeklySummaryDay}
-              onChangeText={setWeeklySummaryDay}
-              keyboardType="numeric"
-            />
-            <Input
-              label="Weekly summary time (HH:MM)"
-              value={weeklySummaryTime}
-              onChangeText={setWeeklySummaryTime}
-              placeholder="20:00"
-            />
-          </>
-        )}
+        <AnimatedScreenSection index={2}>
+          <Text className="text-xs font-semibold mb-3 mt-6" style={{ color: colors.textTertiary }}>
+            ALERT TYPES
+          </Text>
+          <SettingSwitch
+            title="Transaction Alerts"
+            subtitle="Get notified about new transactions"
+            value={transactionAlerts}
+            onValueChange={setTransactionAlerts}
+          />
+          <SettingSwitch
+            title="Budget Warnings"
+            subtitle="Alerts when you reach your budget limit"
+            value={budgetWarnings}
+            onValueChange={setBudgetWarnings}
+          />
+          <SettingSwitch
+            title="Weekly Reports"
+            subtitle="Receive weekly spending summaries"
+            value={weeklyReports}
+            onValueChange={setWeeklyReports}
+          />
+          <SettingSwitch
+            title="Goal Updates"
+            subtitle="Progress updates for your goals"
+            value={goalUpdates}
+            onValueChange={setGoalUpdates}
+          />
+          <SettingSwitch
+            title="Import Notifications"
+            subtitle="Notify when imports finish"
+            value={importNotifications}
+            onValueChange={setImportNotifications}
+          />
+        </AnimatedScreenSection>
 
-        <Text className="text-xs font-semibold mb-3 mt-6" style={{ color: colors.textTertiary }}>
-          QUIET HOURS
-        </Text>
-        <SettingSwitch
-          title="Enable Quiet Hours"
-          subtitle="Pause notifications during quiet hours"
-          value={quietHoursEnabled}
-          onValueChange={setQuietHoursEnabled}
-        />
-        {quietHoursEnabled && (
-          <>
+        <AnimatedScreenSection index={3}>
+          <Text className="text-xs font-semibold mb-3 mt-6" style={{ color: colors.textTertiary }}>
+            FREQUENCY
+          </Text>
+          <Input
+            label="Max notifications per day"
+            value={maxNotificationsPerDay}
+            onChangeText={setMaxNotificationsPerDay}
+            keyboardType="numeric"
+          />
+          <SettingSwitch
+            title="Daily Digest"
+            subtitle="Send a summary every day"
+            value={dailyDigestEnabled}
+            onValueChange={setDailyDigestEnabled}
+          />
+          {dailyDigestEnabled && (
             <Input
-              label="Quiet hours start (HH:MM)"
-              value={quietHoursStart}
-              onChangeText={setQuietHoursStart}
-              placeholder="22:00"
+              label="Daily digest time (HH:MM)"
+              value={dailyDigestTime}
+              onChangeText={setDailyDigestTime}
+              placeholder="09:00"
             />
-            <Input
-              label="Quiet hours end (HH:MM)"
-              value={quietHoursEnd}
-              onChangeText={setQuietHoursEnd}
-              placeholder="07:00"
-            />
-          </>
-        )}
+          )}
 
-        <Text className="text-xs font-semibold mb-3 mt-6" style={{ color: colors.textTertiary }}>
-          THRESHOLDS
-        </Text>
-        <Input
-          label="Large transaction minimum (NGN)"
-          value={largeTransactionMinAmount}
-          onChangeText={setLargeTransactionMinAmount}
-          keyboardType="numeric"
-        />
-        <Input
-          label="Budget warning threshold (%)"
-          value={budgetWarningThreshold}
-          onChangeText={setBudgetWarningThreshold}
-          keyboardType="numeric"
-        />
+          <SettingSwitch
+            title="Weekly Summary"
+            subtitle="Weekly report day and time"
+            value={weeklySummaryEnabled}
+            onValueChange={setWeeklySummaryEnabled}
+          />
+          {weeklySummaryEnabled && (
+            <>
+              <Input
+                label="Weekly summary day (0=Sun, 6=Sat)"
+                value={weeklySummaryDay}
+                onChangeText={setWeeklySummaryDay}
+                keyboardType="numeric"
+              />
+              <Input
+                label="Weekly summary time (HH:MM)"
+                value={weeklySummaryTime}
+                onChangeText={setWeeklySummaryTime}
+                placeholder="20:00"
+              />
+            </>
+          )}
+        </AnimatedScreenSection>
+
+        <AnimatedScreenSection index={4}>
+          <Text className="text-xs font-semibold mb-3 mt-6" style={{ color: colors.textTertiary }}>
+            QUIET HOURS
+          </Text>
+          <SettingSwitch
+            title="Enable Quiet Hours"
+            subtitle="Pause notifications during quiet hours"
+            value={quietHoursEnabled}
+            onValueChange={setQuietHoursEnabled}
+          />
+          {quietHoursEnabled && (
+            <>
+              <Input
+                label="Quiet hours start (HH:MM)"
+                value={quietHoursStart}
+                onChangeText={setQuietHoursStart}
+                placeholder="22:00"
+              />
+              <Input
+                label="Quiet hours end (HH:MM)"
+                value={quietHoursEnd}
+                onChangeText={setQuietHoursEnd}
+                placeholder="07:00"
+              />
+            </>
+          )}
+        </AnimatedScreenSection>
+
+        <AnimatedScreenSection index={5}>
+          <Text className="text-xs font-semibold mb-3 mt-6" style={{ color: colors.textTertiary }}>
+            THRESHOLDS
+          </Text>
+          <Input
+            label="Large transaction minimum (NGN)"
+            value={largeTransactionMinAmount}
+            onChangeText={setLargeTransactionMinAmount}
+            keyboardType="numeric"
+          />
+          <Input
+            label="Budget warning threshold (%)"
+            value={budgetWarningThreshold}
+            onChangeText={setBudgetWarningThreshold}
+            keyboardType="numeric"
+          />
+        </AnimatedScreenSection>
       </ScrollView>
 
       <Toast

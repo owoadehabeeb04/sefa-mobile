@@ -10,9 +10,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -22,6 +19,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Select } from '@/components/common/Select';
 import { Button } from '@/components/common/Button';
 import { Toast } from '@/components/common/Toast';
+import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 import * as SecureStore from 'expo-secure-store';
 import { useCategories, useSyncCategories } from '@/features/categories/category.hooks';
 import { useCreateExpense, useUpdateExpense } from '@/features/expenses/expense.hooks';
@@ -72,7 +70,7 @@ export default function AddTransactionScreen() {
   const resolvedTransactionType = getResolvedTransactionType(transactionType, editingTransaction);
 
   // Hooks
-  const { data: categories, isLoading: categoriesLoading } = useCategories(resolvedTransactionType);
+  const { data: categories } = useCategories(resolvedTransactionType);
   const syncCategories = useSyncCategories();
   const createExpense = useCreateExpense();
   const createIncome = useCreateIncome();
@@ -328,11 +326,6 @@ export default function AddTransactionScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-      {/* <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-      > */}
         <ScrollView 
           className="flex-1" 
           contentContainerStyle={{ paddingBottom: 100 }}
@@ -341,7 +334,7 @@ export default function AddTransactionScreen() {
           bounces={false}
         >
           {/* Header */}
-          <View className="px-6 pt-4 pb-3">
+          <FadeUp className="px-6 pt-4 pb-3">
             <View className="flex-row items-center justify-between mb-1">
               <View className="flex-1">
                 <Text className="text-2xl font-bold" style={{ color: colors.text }}>
@@ -367,10 +360,10 @@ export default function AddTransactionScreen() {
                 </TouchableOpacity>
               )}
             </View>
-          </View>
+          </FadeUp>
 
           {/* Type Toggle */}
-          <View className="mx-6 mb-6">
+          <AnimatedScreenSection index={0} className="mx-6 mb-6">
             <View
               className="flex-row p-1 rounded-2xl"
               style={{ backgroundColor: colors.backgroundSecondary }}
@@ -419,11 +412,12 @@ export default function AddTransactionScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </AnimatedScreenSection>
 
           {/* Form */}
           <View className="px-6 gap-5">
             {/* Amount */}
+            <AnimatedScreenSection index={1}>
             <View>
               <Text className="text-sm font-medium mb-2" style={{ color: colors.text }}>
                 Amount *
@@ -452,8 +446,10 @@ export default function AddTransactionScreen() {
                 />
               </View>
             </View>
+            </AnimatedScreenSection>
 
             {/* Category */}
+            <AnimatedScreenSection index={2}>
             <View>
               <Text className="text-sm font-medium mb-2" style={{ color: colors.text }}>
                 Category *
@@ -465,9 +461,11 @@ export default function AddTransactionScreen() {
                 placeholder="Select category"
               />
             </View>
+            </AnimatedScreenSection>
 
             {/* Source (Income only) */}
             {resolvedTransactionType === 'income' && (
+              <AnimatedScreenSection index={3}>
               <View>
                 <Text className="text-sm font-medium mb-2" style={{ color: colors.text }}>
                   Source *
@@ -488,9 +486,11 @@ export default function AddTransactionScreen() {
                   }}
                 />
               </View>
+              </AnimatedScreenSection>
             )}
 
             {/* Description */}
+            <AnimatedScreenSection index={4}>
             <View>
               <Text className="text-sm font-medium mb-2" style={{ color: colors.text }}>
                 Description
@@ -516,8 +516,10 @@ export default function AddTransactionScreen() {
                 textAlignVertical="top"
               />
             </View>
+            </AnimatedScreenSection>
 
             {/* Date */}
+            <AnimatedScreenSection index={5}>
             <View>
               <Text className="text-sm font-medium mb-2" style={{ color: colors.text }}>
                 Date
@@ -538,8 +540,10 @@ export default function AddTransactionScreen() {
                 }}
               />
             </View>
+            </AnimatedScreenSection>
 
             {/* Payment Method */}
+            <AnimatedScreenSection index={6}>
             <View>
               <Text className="text-sm font-medium mb-2" style={{ color: colors.text }}>
                 Payment Method
@@ -551,9 +555,11 @@ export default function AddTransactionScreen() {
                 placeholder="Select payment method"
               />
             </View>
+            </AnimatedScreenSection>
 
             {/* Location (Expense only) */}
             {resolvedTransactionType === 'expense' && (
+              <AnimatedScreenSection index={7}>
               <View>
                 <Text className="text-sm font-medium mb-2" style={{ color: colors.text }}>
                   Location
@@ -574,22 +580,24 @@ export default function AddTransactionScreen() {
                   }}
                 />
               </View>
+              </AnimatedScreenSection>
             )}
 
             {/* Submit Button */}
-            <Button
-              onPress={handleSubmit}
-              loading={createExpense.isPending || createIncome.isPending || updateExpense.isPending || updateIncome.isPending}
-              disabled={createExpense.isPending || createIncome.isPending || updateExpense.isPending || updateIncome.isPending}
-            >
-              {isEditing 
-                ? 'Update Transaction'
-                : resolvedTransactionType === 'expense' ? 'Add Expense' : 'Add Income'
-              }
-            </Button>
+            <AnimatedScreenSection index={8}>
+              <Button
+                onPress={handleSubmit}
+                loading={createExpense.isPending || createIncome.isPending || updateExpense.isPending || updateIncome.isPending}
+                disabled={createExpense.isPending || createIncome.isPending || updateExpense.isPending || updateIncome.isPending}
+              >
+                {isEditing 
+                  ? 'Update Transaction'
+                  : resolvedTransactionType === 'expense' ? 'Add Expense' : 'Add Income'
+                }
+              </Button>
+            </AnimatedScreenSection>
           </View>
         </ScrollView>
-      {/* </KeyboardAvoidingView> */}
 
       {/* Toast */}
       <Toast

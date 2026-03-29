@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 import 'react-native-gesture-handler';
 import "../globals.css"
 import { setupAutoSync } from '@/services/sync.service';
+import { AppUnlockGate } from '@/src/components/security/AppUnlockGate';
 
 // Create a client for React Query
 const queryClient = new QueryClient({
@@ -47,6 +48,7 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           </Stack>
+          <AppUnlockGate />
           <StatusBar style="dark" />
         </ThemeProvider>
       </SafeAreaProvider>

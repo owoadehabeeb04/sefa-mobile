@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useRetryFailedSyncs, useSyncHistory, useSyncStats } from '@/features/bank/sync.hooks';
+import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 
 const colors = Colors.light;
 
@@ -51,7 +52,7 @@ export default function SyncHistoryScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View
+      <FadeUp
         className="flex-row items-center px-5 py-4 border-b"
         style={{ borderBottomColor: colors.border }}
       >
@@ -71,7 +72,7 @@ export default function SyncHistoryScreen() {
             {retryFailed.isPending ? 'Retrying...' : 'Retry'}
           </Text>
         </TouchableOpacity>
-      </View>
+      </FadeUp>
 
       <ScrollView
         className="flex-1"
@@ -88,7 +89,7 @@ export default function SyncHistoryScreen() {
           />
         }
       >
-        <View className="flex-row mb-4">
+        <AnimatedScreenSection index={0} className="flex-row mb-4">
           <View className="flex-1 p-4 rounded-2xl mr-2" style={{ backgroundColor: colors.primaryBackground }}>
             <Text className="text-xs" style={{ color: colors.textSecondary }}>Success Rate</Text>
             <Text className="text-xl font-bold mt-1" style={{ color: colors.text }}>
@@ -101,10 +102,10 @@ export default function SyncHistoryScreen() {
               {stats?.overall?.totalSyncs ?? 0}
             </Text>
           </View>
-        </View>
+        </AnimatedScreenSection>
 
         {historyItems.length === 0 && (
-          <View className="items-center py-10">
+          <AnimatedScreenSection index={1} className="items-center py-10">
             <Ionicons name="time-outline" size={32} color={colors.textTertiary} />
             <Text className="text-base font-semibold mt-3" style={{ color: colors.text }}>
               No sync history yet
@@ -112,7 +113,7 @@ export default function SyncHistoryScreen() {
             <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
               Start a manual sync from bank connections.
             </Text>
-          </View>
+          </AnimatedScreenSection>
         )}
 
         {historyItems.map((item: any) => {

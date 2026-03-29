@@ -24,6 +24,7 @@ import { SwipeableTransactionItem } from '@/components/transactions/SwipeableTra
 import { DateRangePicker } from '@/components/common/DateRangePicker';
 import { Select } from '@/components/common/Select';
 import { Toast } from '@/components/common/Toast';
+import { AnimatedListItem, AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 import * as SecureStore from 'expo-secure-store';
 import { format } from 'date-fns';
 import { useInfiniteTransactions, useSyncTransactions, groupTransactionsByDate, type Transaction } from '@/features/transactions/transaction.hooks';
@@ -217,44 +218,54 @@ export default function TransactionsScreen() {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const renderItem = useCallback(
-    ({ item }: { item: { type: 'header' | 'transaction'; data: any; key: string } }) => {
+    ({
+      item,
+      index,
+    }: {
+      item: { type: 'header' | 'transaction'; data: any; key: string };
+      index: number;
+    }) => {
       if (item.type === 'header') {
         return (
-          <View className="px-6 py-2" style={{ backgroundColor: colors.background }}>
-            <Text className="text-sm font-bold" style={{ color: colors.textSecondary }}>
-              {item.data}
-            </Text>
-          </View>
+          <AnimatedListItem index={index} total={flatListData.length} variant="fade">
+            <View className="px-6 py-2" style={{ backgroundColor: colors.background }}>
+              <Text className="text-sm font-bold" style={{ color: colors.textSecondary }}>
+                {item.data}
+              </Text>
+            </View>
+          </AnimatedListItem>
         );
       }
       const transaction = item.data as Transaction;
       return (
-        <SwipeableTransactionItem
-          transaction={transaction}
-          isExpense={transaction.type === 'expense'}
-          onEdit={handleEdit as (t: Transaction) => void}
-          onDelete={handleDelete as (t: Transaction) => void}
-          onPress={handleTransactionPress as (t: Transaction) => void}
-        />
+        <AnimatedListItem index={index} total={flatListData.length}>
+          <SwipeableTransactionItem
+            transaction={transaction}
+            isExpense={transaction.type === 'expense'}
+            onEdit={handleEdit as (t: Transaction) => void}
+            onDelete={handleDelete as (t: Transaction) => void}
+            onPress={handleTransactionPress as (t: Transaction) => void}
+          />
+        </AnimatedListItem>
       );
     },
-    [colors.background, colors.textSecondary, handleEdit, handleDelete, handleTransactionPress]
+    [colors.background, colors.textSecondary, flatListData.length, handleEdit, handleDelete, handleTransactionPress]
   );
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.background }}>
-        <View className="px-6 pt-4 pb-3">
+        <FadeUp className="px-6 pt-4 pb-3">
           <Text className="text-2xl font-bold" style={{ color: colors.text }}>
             Transactions
           </Text>
           <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
             {totalTransactions > 0 ? `${totalTransactions} transaction${totalTransactions !== 1 ? 's' : ''}` : 'Transactions'}
           </Text>
-        </View>
+        </FadeUp>
 
         {/* Search and Filters */}
-        <View className="px-6 pb-3">
+        <AnimatedScreenSection index={0} className="px-6 pb-3">
           {/* Search Bar */}
           <View
             className="flex-row items-center px-4 py-3 rounded-xl mb-3"
@@ -358,34 +369,36 @@ export default function TransactionsScreen() {
               />
             </View>
           )}
-        </View>
+        </AnimatedScreenSection>
 
         {/* Summary */}
         {transactions.length > 0 && (
-          <View className="flex-row px-6 pb-3 gap-3">
-            <View
-              className="flex-1 p-3 rounded-xl"
-              style={{ backgroundColor: `${colors.success}15` }}
-            >
-              <Text className="text-xs mb-1" style={{ color: colors.success }}>
-                Income
-              </Text>
-              <Text className="text-base font-bold" style={{ color: colors.success }}>
-                ₦{totalIncome.toLocaleString()}
-              </Text>
+          <AnimatedScreenSection index={1}>
+            <View className="flex-row px-6 pb-3 gap-3">
+              <View
+                className="flex-1 p-3 rounded-xl"
+                style={{ backgroundColor: `${colors.success}15` }}
+              >
+                <Text className="text-xs mb-1" style={{ color: colors.success }}>
+                  Income
+                </Text>
+                <Text className="text-base font-bold" style={{ color: colors.success }}>
+                  ₦{totalIncome.toLocaleString()}
+                </Text>
+              </View>
+              <View
+                className="flex-1 p-3 rounded-xl"
+                style={{ backgroundColor: `${colors.error}15` }}
+              >
+                <Text className="text-xs mb-1" style={{ color: colors.error }}>
+                  Expenses
+                </Text>
+                <Text className="text-base font-bold" style={{ color: colors.error }}>
+                  ₦{totalExpenses.toLocaleString()}
+                </Text>
+              </View>
             </View>
-            <View
-              className="flex-1 p-3 rounded-xl"
-              style={{ backgroundColor: `${colors.error}15` }}
-            >
-              <Text className="text-xs mb-1" style={{ color: colors.error }}>
-                Expenses
-              </Text>
-              <Text className="text-base font-bold" style={{ color: colors.error }}>
-                ₦{totalExpenses.toLocaleString()}
-              </Text>
-            </View>
-          </View>
+          </AnimatedScreenSection>
         )}
 
         {/* Transaction List with Virtual Scrolling */}

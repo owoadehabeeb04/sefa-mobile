@@ -12,6 +12,7 @@ import { PasswordInput } from '@/src/components/common/PasswordInput';
 import { Button } from '@/src/components/common/Button';
 import { Toast, useToast } from '@/src/components/common/Toast';
 import { OTPVerificationScreen } from '@/src/components/auth/OTPVerificationScreen';
+import { AnimatedScreenSection, FadeUp, ScaleIn } from '@/src/components/motion';
 import {
   useResetPassword,
   useResendPasswordResetOTP,
@@ -123,7 +124,7 @@ export default function ResetPasswordScreen() {
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View className="flex-1">
         {/* Logo Header */}
-        <View className="px-6 pt-12 pb-4">
+        <ScaleIn style={{ paddingHorizontal: 24, paddingTop: 48, paddingBottom: 16 }}>
           <View className="flex-row items-center justify-between">
             {/* Back Button + Logo + SEFA Text */}
             <View className="flex-row items-center">
@@ -160,7 +161,7 @@ export default function ResetPasswordScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </ScaleIn>
 
         <OTPVerificationScreen
           email={email}
@@ -198,7 +199,7 @@ export default function ResetPasswordScreen() {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View className="flex-1">
       {/* Logo Header */}
-      <View className="px-6 pt-12 pb-4">
+      <ScaleIn style={{ paddingHorizontal: 24, paddingTop: 48, paddingBottom: 16 }}>
         <View className="flex-row items-center justify-between">
           {/* Back Button + Logo + SEFA Text */}
           <View className="flex-row items-center">
@@ -235,10 +236,10 @@ export default function ResetPasswordScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ScaleIn>
 
       <View className="flex-1 px-6 pt-8">
-        <View className="mb-8">
+        <FadeUp style={{ marginBottom: 32 }}>
           <Text
             className="text-3xl font-bold mb-2"
             style={{ color: colors.text }}
@@ -251,32 +252,37 @@ export default function ResetPasswordScreen() {
           >
             Enter your new password below
           </Text>
-        </View>
+        </FadeUp>
 
-        <PasswordInput
-          label="New Password"
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Enter new password"
-          error={errors.password}
-        />
+        <AnimatedScreenSection index={0}>
+          <PasswordInput
+            label="New Password"
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Enter new password"
+            error={errors.password}
+          />
+        </AnimatedScreenSection>
 
-        <PasswordInput
-          label="Confirm Password"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          placeholder="Confirm new password"
-          error={errors.confirmPassword}
-        />
+        <AnimatedScreenSection index={1}>
+          <PasswordInput
+            label="Confirm Password"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholder="Confirm new password"
+            error={errors.confirmPassword}
+          />
+        </AnimatedScreenSection>
 
-        <Button
-          title="Reset Password"
-          onPress={handleResetPassword}
-          fullWidth
-          size="large"
-          loading={resetPasswordMutation.isPending}
-          className="mt-4"
-        />
+        <AnimatedScreenSection index={2} style={{ marginTop: 16 }}>
+          <Button
+            title="Reset Password"
+            onPress={handleResetPassword}
+            fullWidth
+            size="large"
+            loading={resetPasswordMutation.isPending}
+          />
+        </AnimatedScreenSection>
       </View>
         </View>
       </TouchableWithoutFeedback>

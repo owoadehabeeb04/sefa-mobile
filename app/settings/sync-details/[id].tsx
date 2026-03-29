@@ -7,10 +7,10 @@ import { Colors } from '@/constants/theme';
 import { Toast } from '@/components/common/Toast';
 import {
   useCancelSync,
-  useClearSyncTransactions,
   useConnectionSyncStatus,
   useSyncLogDetails,
 } from '@/features/bank/sync.hooks';
+import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 
 const colors = Colors.light;
 
@@ -50,7 +50,6 @@ export default function SyncDetailsScreen() {
       : connectionStatus.data?.data?.currentSyncLogId || connectionStatus.data?.data?.latestSync?.syncLogId || '';
   const syncLogDetails = useSyncLogDetails(selectedSyncLogId);
   const cancelSync = useCancelSync();
-  const clearSyncTransactions = useClearSyncTransactions();
 
   const [showToast, setShowToast] = React.useState(false);
   const [toastMessage, setToastMessage] = React.useState('');
@@ -105,47 +104,11 @@ export default function SyncDetailsScreen() {
     ]);
   };
 
-  const handleClearSyncTransactions = () => {
-    if (!selectedSyncLogId) return;
-
-    Alert.alert(
-      'Clear Sync Transactions',
-      'This will remove transactions imported by this sync from your database. Continue?',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes, Clear',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const result = await clearSyncTransactions.mutateAsync(selectedSyncLogId);
-              setToastType('success');
-              setToastMessage(
-                result?.data?.totalDeleted
-                  ? `Cleared ${result.data.totalDeleted} transaction(s) from this sync`
-                  : 'Sync transactions cleared successfully',
-              );
-              setShowToast(true);
-              handleRefresh();
-            } catch (error: any) {
-              setToastType('error');
-              setToastMessage(error?.message || 'Failed to clear sync transactions');
-              setShowToast(true);
-            }
-          },
-        },
-      ],
-    );
-  };
-
   const syncStatusColor = getStatusColor(syncLogData?.status || activeSyncStatus);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View
-        className="flex-row items-center px-5 py-4 border-b"
-        style={{ borderBottomColor: colors.border }}
-      >
+      <FadeUp className="flex-row items-center px-5 py-4 border-b" style={{ borderBottomColor: colors.border }}>
         <TouchableOpacity onPress={() => router.back()} className="mr-4">
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
@@ -161,11 +124,12 @@ export default function SyncDetailsScreen() {
             Refresh
           </Text>
         </TouchableOpacity>
-      </View>
+      </FadeUp>
 
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, paddingBottom: 30 }}>
         {isActivelySyncing && (
-          <View
+          <AnimatedScreenSection
+            index={0}
             className="p-4 rounded-2xl mb-4 flex-row items-center"
             style={{ backgroundColor: colors.primaryBackground }}
           >
@@ -178,10 +142,10 @@ export default function SyncDetailsScreen() {
                 You can leave this page. The app will refresh while the sync is active.
               </Text>
             </View>
-          </View>
+          </AnimatedScreenSection>
         )}
 
-        <View className="p-5 rounded-2xl mb-4" style={{ backgroundColor: colors.backgroundSecondary }}>
+        <AnimatedScreenSection index={1} className="p-5 rounded-2xl mb-4" style={{ backgroundColor: colors.backgroundSecondary }}>
           <Text className="text-base font-semibold" style={{ color: colors.text }}>
             {institutionLabel}
           </Text>
@@ -205,9 +169,9 @@ export default function SyncDetailsScreen() {
               Last Issue: {connectionData.lastErrorSummary}
             </Text>
           )}
-        </View>
+        </AnimatedScreenSection>
 
-        <View className="p-5 rounded-2xl mb-4" style={{ backgroundColor: colors.primaryBackground }}>
+        <AnimatedScreenSection index={2} className="p-5 rounded-2xl mb-4" style={{ backgroundColor: colors.primaryBackground }}>
           <Text className="text-sm font-semibold" style={{ color: colors.text }}>
             Sync Run
           </Text>
@@ -274,10 +238,11 @@ export default function SyncDetailsScreen() {
               </Text>
             </TouchableOpacity>
           )} */}
-        </View>
+        </AnimatedScreenSection>
 
         {isActivelySyncing && !!resolvedConnectionId && (
-          <TouchableOpacity
+          <AnimatedScreenSection index={3}>
+            <TouchableOpacity
             onPress={handleCancelSync}
             className="px-4 py-3 rounded-xl items-center"
             style={{ backgroundColor: `${colors.error}20` }}
@@ -285,7 +250,8 @@ export default function SyncDetailsScreen() {
             <Text className="text-sm font-semibold" style={{ color: colors.error }}>
               {cancelSync.isPending ? 'Cancelling...' : 'Cancel Sync'}
             </Text>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          </AnimatedScreenSection>
         )}
       </ScrollView>
 

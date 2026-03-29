@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { Toast } from '@/components/common/Toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 
 const colors = Colors.light;
 
@@ -79,7 +80,7 @@ export default function ClearDataScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
-      <View
+      <FadeUp
         className="flex-row items-center px-5 py-4 border-b"
         style={{ borderBottomColor: colors.border }}
       >
@@ -89,10 +90,11 @@ export default function ClearDataScreen() {
         <Text className="text-xl font-bold flex-1" style={{ color: colors.text }}>
           Clear Cache
         </Text>
-      </View>
+      </FadeUp>
 
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }}>
-        <View
+        <AnimatedScreenSection
+          index={0}
           className="p-5 rounded-2xl mb-6"
           style={{ backgroundColor: `${colors.error}15` }}
         >
@@ -105,9 +107,10 @@ export default function ClearDataScreen() {
           <Text className="text-sm" style={{ color: colors.textSecondary }}>
             This clears cached data on this device only. Your data on the server is safe and will reload when you refresh.
           </Text>
-        </View>
+        </AnimatedScreenSection>
 
-        <View
+        <AnimatedScreenSection
+          index={1}
           className="p-5 rounded-2xl mb-6"
           style={{ backgroundColor: colors.backgroundSecondary }}
         >
@@ -134,35 +137,38 @@ export default function ClearDataScreen() {
               • Cached dashboard data
             </Text>
           </View>
-        </View>
+        </AnimatedScreenSection>
 
-        <View
+        <AnimatedScreenSection
+          index={2}
           className="p-5 rounded-2xl mb-6"
           style={{ backgroundColor: colors.primaryBackground }}
         >
           <Text className="text-sm" style={{ color: colors.textSecondary }}>
              Tip: Export your data before clearing if you want to keep a backup.
           </Text>
-        </View>
+        </AnimatedScreenSection>
 
-        <TouchableOpacity
-          onPress={handleClearData}
-          disabled={isClearing}
-          className="rounded-xl px-6 py-3 items-center justify-center"
-          style={{
-            backgroundColor: colors.error,
-            opacity: isClearing ? 0.5 : 1,
-          }}
-          activeOpacity={0.7}
-        >
-          {isClearing ? (
-            <ActivityIndicator color="#FFFFFF" size="small" />
-          ) : (
-            <Text className="text-base font-semibold" style={{ color: '#FFFFFF' }}>
-              Clear Cache
-            </Text>
-          )}
-        </TouchableOpacity>
+        <AnimatedScreenSection index={3}>
+          <TouchableOpacity
+            onPress={handleClearData}
+            disabled={isClearing}
+            className="rounded-xl px-6 py-3 items-center justify-center"
+            style={{
+              backgroundColor: colors.error,
+              opacity: isClearing ? 0.5 : 1,
+            }}
+            activeOpacity={0.7}
+          >
+            {isClearing ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text className="text-base font-semibold" style={{ color: '#FFFFFF' }}>
+                Clear Cache
+              </Text>
+            )}
+          </TouchableOpacity>
+        </AnimatedScreenSection>
       </ScrollView>
 
       <Toast

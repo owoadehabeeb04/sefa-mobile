@@ -18,6 +18,7 @@ import * as Haptics from 'expo-haptics';
 import { Colors } from '@/constants/theme';
 import { Button } from '@/components/common/Button';
 import { Toast } from '@/components/common/Toast';
+import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 import { useBudget, useUpdateBudget } from '@/features/budget/budget.hooks';
 import { useDashboardSummary } from '@/features/dashboard/dashboard.hooks';
 
@@ -89,7 +90,7 @@ export default function BudgetSettingsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View
+      <FadeUp
         className="flex-row items-center px-5 py-4 border-b"
         style={{ borderBottomColor: colors.border }}
       >
@@ -99,10 +100,11 @@ export default function BudgetSettingsScreen() {
         <Text className="text-xl font-bold flex-1" style={{ color: colors.text }}>
           Budget Settings
         </Text>
-      </View>
+      </FadeUp>
 
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }}>
-        <View
+        <AnimatedScreenSection
+          index={0}
           className="p-5 rounded-2xl mb-6"
           style={{ backgroundColor: colors.primaryBackground }}
         >
@@ -166,10 +168,11 @@ export default function BudgetSettingsScreen() {
               />
             </>
           )}
-        </View>
+        </AnimatedScreenSection>
 
         {/* AI Recommendation */}
-        <View
+        <AnimatedScreenSection
+          index={1}
           className="p-5 rounded-2xl mb-6"
           style={{ backgroundColor: colors.backgroundSecondary }}
         >
@@ -201,9 +204,10 @@ export default function BudgetSettingsScreen() {
               Add income and expenses to get personalized budget tips.
             </Text>
           )}
-        </View>
+        </AnimatedScreenSection>
 
-        <View
+        <AnimatedScreenSection
+          index={2}
           className="p-5 rounded-2xl"
           style={{ backgroundColor: colors.backgroundSecondary }}
         >
@@ -224,7 +228,7 @@ export default function BudgetSettingsScreen() {
               • Set aside some buffer for unexpected expenses
             </Text>
           </View>
-        </View>
+        </AnimatedScreenSection>
       </ScrollView>
 
       <Toast

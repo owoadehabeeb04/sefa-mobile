@@ -12,6 +12,7 @@ import { Input } from '@/src/components/common/Input';
 import { PasswordInput } from '@/src/components/common/PasswordInput';
 import { Button } from '@/src/components/common/Button';
 import { Toast, useToast } from '@/src/components/common/Toast';
+import { AnimatedScreenSection, FadeUp, ScaleIn } from '@/src/components/motion';
 import { useLogin } from '@/features/auth/auth.hooks';
 import { getOnboardingStatus } from '@/features/onboarding/onboarding.service';
 import { getOnboardingRoute } from '@/features/auth/auth-routing';
@@ -83,7 +84,7 @@ export default function LoginScreen() {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View className="flex-1">
       {/* Logo Header */}
-      <View className="px-6 pt-12 pb-4">
+      <ScaleIn style={{ paddingHorizontal: 24, paddingTop: 48, paddingBottom: 16 }}>
         <View className="flex-row items-center justify-between">
           {/* Logo + SEFA Text */}
           <View className="flex-row items-center">
@@ -114,11 +115,11 @@ export default function LoginScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ScaleIn>
 
       <View className="flex-1 px-6 pt-8">
         {/* Header */}
-        <View className="mb-8">
+        <FadeUp style={{ marginBottom: 32 }}>
           <Text
             className="text-3xl font-bold mb-2"
             style={{ color: colors.text }}
@@ -131,64 +132,74 @@ export default function LoginScreen() {
           >
             Sign in to your account
           </Text>
-        </View>
+        </FadeUp>
 
         {/* Form */}
-        <Input
-          label="Your email"
-          value={email}
-          onChangeText={setEmail}
-          placeholder="johndoe@mail.com"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          error={errors.email}
-        />
+        <AnimatedScreenSection index={0}>
+          <Input
+            label="Your email"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="johndoe@mail.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            error={errors.email}
+          />
+        </AnimatedScreenSection>
 
-        <PasswordInput
-          label="Password"
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Enter your password"
-          error={errors.password}
-        />
+        <AnimatedScreenSection index={1}>
+          <PasswordInput
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Enter your password"
+            error={errors.password}
+          />
+        </AnimatedScreenSection>
 
-        <TouchableOpacity
-          onPress={() => router.push('/(auth)/forgot-password')}
-          className="self-end mb-6"
-        >
-          <Text
-            className="text-sm font-medium"
-            style={{ color: colors.primary }}
+        <AnimatedScreenSection index={2} variant="slide">
+          <TouchableOpacity
+            onPress={() => router.push('/(auth)/forgot-password')}
+            className="self-end mb-6"
           >
-            Forgot Password?
-          </Text>
-        </TouchableOpacity>
-
-        <Button
-          title="Sign In"
-          onPress={handleLogin}
-          fullWidth
-          size="large"
-          loading={loginMutation.isPending}
-        />
-
-        {/* Sign Up Link */}
-        <View className="flex-row justify-center items-center mt-6">
-          <Text
-            className="text-base"
-            style={{ color: colors.textSecondary }}
-          >
-            Don&apos;t have an account?{' '}
-          </Text>
-          <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
             <Text
-              className="text-base font-semibold"
+              className="text-sm font-medium"
               style={{ color: colors.primary }}
             >
-              Sign Up
+              Forgot Password?
             </Text>
           </TouchableOpacity>
-        </View>
+        </AnimatedScreenSection>
+
+        <AnimatedScreenSection index={3}>
+          <Button
+            title="Sign In"
+            onPress={handleLogin}
+            fullWidth
+            size="large"
+            loading={loginMutation.isPending}
+          />
+        </AnimatedScreenSection>
+
+        {/* Sign Up Link */}
+        <AnimatedScreenSection index={4} style={{ marginTop: 24 }}>
+          <View className="flex-row justify-center items-center">
+            <Text
+              className="text-base"
+              style={{ color: colors.textSecondary }}
+            >
+              Don&apos;t have an account?{' '}
+            </Text>
+            <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
+              <Text
+                className="text-base font-semibold"
+                style={{ color: colors.primary }}
+              >
+                Sign Up
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </AnimatedScreenSection>
       </View>
         </View>
       </TouchableWithoutFeedback>

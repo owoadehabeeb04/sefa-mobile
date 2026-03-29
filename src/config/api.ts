@@ -119,14 +119,10 @@ export const API_ENDPOINTS = {
     BASE: '/transactions',
   },
 
-  // Bank connections and imports
+  // Bank connections
   BANK: {
     CONNECT: '/bank/connect',
     CONNECTIONS: '/bank/connections',
-    UPLOAD: '/bank/upload',
-    IMPORTS: '/bank/imports',
-    IMPORT_STATUS: '/bank/import',
-    UNDO_IMPORT: '/bank/import',
   },
 
   // Sync operations (bank connections)

@@ -18,6 +18,7 @@ import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { NotificationCard } from '@/components/notifications/NotificationCard';
+import { AnimatedListItem, FadeUp } from '@/src/components/motion';
 import {
   useNotifications,
   useMarkAllRead,
@@ -114,30 +115,6 @@ console.log('All notifications:', allNotifications);
     [router],
   );
 
-  const renderItem = useCallback(
-    ({ item }: { item: AppNotification | { _groupLabel: string } }) => {
-      if ('_groupLabel' in item) {
-        return (
-          <Text
-            className="text-xs font-semibold uppercase tracking-wider mx-4 mt-5 mb-2"
-            style={{ color: colors.textSecondary }}
-          >
-            {item._groupLabel}
-          </Text>
-        );
-      }
-      const id = item._id ?? item.id;
-      return (
-        <NotificationCard
-          notification={item}
-          onPress={() => handlePress(item)}
-          onDelete={() => handleDelete(id)}
-        />
-      );
-    },
-    [colors, handlePress, handleDelete],
-  );
-
   // Build a flat list with group-label sentinel objects
   const flatData = useMemo(() => {
     const result: (AppNotification | { _groupLabel: string })[] = [];
@@ -147,6 +124,34 @@ console.log('All notifications:', allNotifications);
     }
     return result;
   }, [groups]);
+
+  const renderItem = useCallback(
+    ({ item, index }: { item: AppNotification | { _groupLabel: string }; index: number }) => {
+      if ('_groupLabel' in item) {
+        return (
+          <AnimatedListItem index={index} total={flatData.length} variant="fade">
+            <Text
+              className="text-xs font-semibold uppercase tracking-wider mx-4 mt-5 mb-2"
+              style={{ color: colors.textSecondary }}
+            >
+              {item._groupLabel}
+            </Text>
+          </AnimatedListItem>
+        );
+      }
+      const id = item._id ?? item.id;
+      return (
+        <AnimatedListItem index={index} total={flatData.length}>
+          <NotificationCard
+            notification={item}
+            onPress={() => handlePress(item)}
+            onDelete={() => handleDelete(id)}
+          />
+        </AnimatedListItem>
+      );
+    },
+    [colors, flatData.length, handlePress, handleDelete],
+  );
 
   const keyExtractor = useCallback((item: any, index: number) => {
     if (item._groupLabel) return `group-${item._groupLabel}`;
@@ -190,7 +195,7 @@ console.log('All notifications:', allNotifications);
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
-      <View
+      <FadeUp
         className="flex-row items-center justify-between px-5 py-4 border-b"
         style={{ borderBottomColor: colors.border }}
       >
@@ -218,7 +223,7 @@ console.log('All notifications:', allNotifications);
             </Text>
           </TouchableOpacity>
         )}
-      </View>
+      </FadeUp>
 
       {/* Loading state */}
       {isLoading ? (

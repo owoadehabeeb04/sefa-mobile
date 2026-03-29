@@ -28,12 +28,15 @@ import {
   useUpdateConnectionSettings,
 } from '@/features/bank/bankConnection.hooks';
 import { useAuthStore } from '@/store/auth.store';
+import { useSensitiveActionSecurity } from '@/features/security/useSensitiveActionSecurity';
 import type { BankConnection } from '@/features/bank/bankConnection.types';
+import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 
 export default function BankConnectionsScreen() {
   const colors = Colors.light;
   const router = useRouter();
   const { user } = useAuthStore();
+  const { requireVerification } = useSensitiveActionSecurity();
 
   const { data: connections, isLoading, refetch, isRefetching } = useBankConnections();
   const connectBank = useConnectBank();
@@ -62,7 +65,13 @@ export default function BankConnectionsScreen() {
       return;
     }
 
-    setShowMono(true);
+    requireVerification('connect_bank').then((allowed) => {
+      if (!allowed) {
+        return;
+      }
+
+      setShowMono(true);
+    });
   };
 
   const handleMonoSuccess = async (code: string) => {
@@ -115,6 +124,11 @@ export default function BankConnectionsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              const allowed = await requireVerification('disconnect_bank');
+              if (!allowed) {
+                return;
+              }
+
               await disconnectBank.mutateAsync(connection.id);
               setToastMessage('Bank disconnected');
               setToastType('success');
@@ -154,7 +168,7 @@ export default function BankConnectionsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View
+      <FadeUp
         className="flex-row items-center px-5 py-4 border-b"
         style={{ borderBottomColor: colors.border }}
       >
@@ -184,7 +198,7 @@ export default function BankConnectionsScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </FadeUp>
 
       <ScrollView
         className="flex-1"
@@ -198,11 +212,11 @@ export default function BankConnectionsScreen() {
           />
         }
       >
-        <View className="mb-4">
+        <AnimatedScreenSection index={0} className="mb-4">
           <Text className="text-sm" style={{ color: colors.textSecondary }}>
             Link your bank accounts to sync transactions automatically.
           </Text>
-        </View>
+        </AnimatedScreenSection>
 
         {isLoading && (
           <View className="py-10 items-center">
@@ -214,7 +228,7 @@ export default function BankConnectionsScreen() {
         )}
 
         {!isLoading && !hasConnections && (
-          <View className="items-center py-10">
+          <AnimatedScreenSection index={1} className="items-center py-10">
             <View
               className="w-16 h-16 rounded-full items-center justify-center mb-4"
               style={{ backgroundColor: colors.primaryBackground }}
@@ -236,10 +250,11 @@ export default function BankConnectionsScreen() {
                 Connect New Bank
               </Text>
             </TouchableOpacity>
-          </View>
+          </AnimatedScreenSection>
         )}
 
         {hasConnections && (
+          <AnimatedScreenSection index={1}>
           <View>
             {(connections ?? []).map((connection) => (
               <BankConnectionCard
@@ -262,6 +277,7 @@ export default function BankConnectionsScreen() {
               />
             ))}
           </View>
+          </AnimatedScreenSection>
         )}
       </ScrollView>
 

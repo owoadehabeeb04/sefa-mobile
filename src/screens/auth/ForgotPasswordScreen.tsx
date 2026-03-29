@@ -11,6 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Input } from '@/src/components/common/Input';
 import { Button } from '@/src/components/common/Button';
 import { Toast, useToast } from '@/src/components/common/Toast';
+import { AnimatedScreenSection, FadeUp, ScaleIn } from '@/src/components/motion';
 import { useForgotPassword } from '@/features/auth/auth.hooks';
 import { validateEmail } from '@/utils/validators';
 import { Ionicons } from '@expo/vector-icons';
@@ -76,7 +77,7 @@ export default function ForgotPasswordScreen() {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View className="flex-1">
       {/* Logo Header */}
-      <View className="px-6 pt-12 pb-4">
+      <ScaleIn style={{ paddingHorizontal: 24, paddingTop: 48, paddingBottom: 16 }}>
         <View className="flex-row items-center justify-between">
           {/* Back Button + Logo + SEFA Text */}
           <View className="flex-row items-center">
@@ -113,11 +114,11 @@ export default function ForgotPasswordScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ScaleIn>
 
       <View className="flex-1 px-6 pt-8">
         {/* Header */}
-        <View className="mb-8">
+        <FadeUp style={{ marginBottom: 32 }}>
           <Text
             className="text-3xl font-bold mb-2"
             style={{ color: colors.text }}
@@ -130,40 +131,45 @@ export default function ForgotPasswordScreen() {
           >
             Enter the email address associated with your account
           </Text>
-        </View>
+        </FadeUp>
 
         {/* Form */}
-        <Input
-          label="Your email"
-          value={email}
-          onChangeText={setEmail}
-          placeholder="johndoe@mail.com"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          error={error}
-        />
+        <AnimatedScreenSection index={0}>
+          <Input
+            label="Your email"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="johndoe@mail.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            error={error}
+          />
+        </AnimatedScreenSection>
 
-        <Button
-          title="Continue"
-          onPress={handleSendOTP}
-          fullWidth
-          size="large"
-          loading={forgotPasswordMutation.isPending}
-          className="mt-4"
-        />
+        <AnimatedScreenSection index={1} style={{ marginTop: 16 }}>
+          <Button
+            title="Continue"
+            onPress={handleSendOTP}
+            fullWidth
+            size="large"
+            loading={forgotPasswordMutation.isPending}
+          />
+        </AnimatedScreenSection>
 
         {/* Back to Sign In */}
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="self-center mt-6"
-        >
-          <Text
-            className="text-base font-medium"
-            style={{ color: colors.primary }}
+        <AnimatedScreenSection index={2} variant="slide" style={{ alignItems: 'center', marginTop: 24 }}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="self-center"
           >
-            Back to Sign In
-          </Text>
-        </TouchableOpacity>
+            <Text
+              className="text-base font-medium"
+              style={{ color: colors.primary }}
+            >
+              Back to Sign In
+            </Text>
+          </TouchableOpacity>
+        </AnimatedScreenSection>
       </View>
         </View>
       </TouchableWithoutFeedback>

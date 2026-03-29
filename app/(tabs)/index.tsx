@@ -3,9 +3,8 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
+import { Alert, View, Text, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useQueryClient } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
@@ -20,14 +19,14 @@ import { SpendingChart } from '@/components/dashboard/CategoryBar';
 import { AIInsightCard } from '@/components/dashboard/AIInsightCard';
 import { TransactionList } from '@/components/dashboard/TransactionList';
 import { DateRangePicker } from '@/components/common/DateRangePicker';
+import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 import { format } from 'date-fns';
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
-  const { clearAuth, user } = useAuthStore();
+  const { user } = useAuthStore();
   const { data: unreadCount = 0 } = useUnreadCount();
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [startDate, setStartDate] = useState<string | undefined>();
@@ -40,21 +39,6 @@ export default function DashboardScreen() {
     startDate,
     endDate,
   });
-
-  const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: async () => {
-          await clearAuth();
-          queryClient.clear();
-          router.replace('/(welcome)');
-        },
-      },
-    ]);
-  };
 
   // Error state
   if (isError && !isLoading) {
@@ -110,7 +94,7 @@ export default function DashboardScreen() {
         }
       >
         {/* Header */}
-        <View className="pt-4 pb-4">
+        <FadeUp className="pt-4 pb-4">
           <View className="flex-row items-center justify-between mb-2">
             <View className="flex-1">
               <Text className="text-2xl font-bold" style={{ color: colors.text }}>
@@ -166,35 +150,37 @@ export default function DashboardScreen() {
               Welcome back, {user.name.split(' ')[0]} 👋
             </Text>
           )}
-        </View>
+        </FadeUp>
 
         {/* Date Range Picker Button */}
-        <TouchableOpacity
-          onPress={() => setShowDatePicker(true)}
-          className="flex-row items-center justify-between p-4 rounded-2xl mb-6"
-          style={{ backgroundColor: colors.backgroundSecondary }}
-          activeOpacity={0.7}
-        >
-          <View className="flex-row items-center flex-1">
-            <View
-              className="w-10 h-10 rounded-full items-center justify-center mr-3"
-              style={{ backgroundColor: colors.primaryBackground }}
-            >
-              <Ionicons name="calendar" size={20} color={colors.primary} />
+        <AnimatedScreenSection index={0}>
+          <TouchableOpacity
+            onPress={() => setShowDatePicker(true)}
+            className="flex-row items-center justify-between p-4 rounded-2xl mb-6"
+            style={{ backgroundColor: colors.backgroundSecondary }}
+            activeOpacity={0.7}
+          >
+            <View className="flex-row items-center flex-1">
+              <View
+                className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                style={{ backgroundColor: colors.primaryBackground }}
+              >
+                <Ionicons name="calendar" size={20} color={colors.primary} />
+              </View>
+              <View className="flex-1">
+                <Text className="text-xs mb-0.5" style={{ color: colors.textTertiary }}>
+                  Period
+                </Text>
+                <Text className="text-base font-semibold" style={{ color: colors.text }}>
+                  {period === 'custom' && startDate && endDate
+                    ? `${format(new Date(startDate), 'MMM dd')} - ${format(new Date(endDate), 'MMM dd, yyyy')}`
+                    : dashboardData?.period.label || 'This Month'}
+                </Text>
+              </View>
             </View>
-            <View className="flex-1">
-              <Text className="text-xs mb-0.5" style={{ color: colors.textTertiary }}>
-                Period
-              </Text>
-              <Text className="text-base font-semibold" style={{ color: colors.text }}>
-                {period === 'custom' && startDate && endDate
-                  ? `${format(new Date(startDate), 'MMM dd')} - ${format(new Date(endDate), 'MMM dd, yyyy')}`
-                  : dashboardData?.period.label || 'This Month'}
-              </Text>
-            </View>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-        </TouchableOpacity>
+            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+          </TouchableOpacity>
+        </AnimatedScreenSection>
 
         {/* Date Range Picker Modal */}
         <DateRangePicker
@@ -210,6 +196,7 @@ export default function DashboardScreen() {
         />
 
         {/* Summary Cards */}
+        <AnimatedScreenSection index={1}>
         <View className="flex-row flex-wrap gap-3 mb-6">
           <SummaryCard
             title="Income"
@@ -240,77 +227,90 @@ export default function DashboardScreen() {
             icon="save"
           />
         </View>
+        </AnimatedScreenSection>
 
         {/* Budget quick alert (scaled by period) + optional "This month" strip */}
         {dashboardData?.budget && (
-          <BudgetAlertCard
-            budget={dashboardData.budget}
-            currency={currency}
-            thisMonthBudget={dashboardData.thisMonthBudget ?? null}
-          />
+          <AnimatedScreenSection index={2}>
+            <BudgetAlertCard
+              budget={dashboardData.budget}
+              currency={currency}
+              thisMonthBudget={dashboardData.thisMonthBudget ?? null}
+            />
+          </AnimatedScreenSection>
         )}
 
         {/* Add Expense Button */}
-        <TouchableOpacity
-          onPress={() => {
-            // TODO: Navigate to add expense screen
-            Alert.alert('Coming Soon', 'Add expense feature will be available soon!');
-          }}
-          className="flex-row items-center justify-center py-4 rounded-2xl mb-6"
-          style={{ backgroundColor: colors.primary }}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add-circle" size={24} color="#FFFFFF" style={{ marginRight: 8 }} />
-          <Text className="text-base font-semibold" style={{ color: '#FFFFFF' }}>
-            Add Expense
-          </Text>
-        </TouchableOpacity>
+        <AnimatedScreenSection index={3}>
+          <TouchableOpacity
+            onPress={() => {
+              // TODO: Navigate to add expense screen
+              Alert.alert('Coming Soon', 'Add expense feature will be available soon!');
+            }}
+            className="flex-row items-center justify-center py-4 rounded-2xl mb-6"
+            style={{ backgroundColor: colors.primary }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add-circle" size={24} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text className="text-base font-semibold" style={{ color: '#FFFFFF' }}>
+              Add Expense
+            </Text>
+          </TouchableOpacity>
+        </AnimatedScreenSection>
 
         {/* Spending Chart */}
-        <View className="mb-6">
-          <SpendingChart
-            categories={dashboardData?.topCategories || []}
-            title="Top Spending"
-            currency={currency}
-          />
-        </View>
+        <AnimatedScreenSection index={4}>
+          <View className="mb-6">
+            <SpendingChart
+              categories={dashboardData?.topCategories || []}
+              title="Top Spending"
+              currency={currency}
+            />
+          </View>
+        </AnimatedScreenSection>
 
         {/* AI Insight */}
         {dashboardData?.aiInsight && (
-          <View className="mb-6">
-            <AIInsightCard insight={dashboardData.aiInsight} />
-          </View>
+          <AnimatedScreenSection index={5}>
+            <View className="mb-6">
+              <AIInsightCard insight={dashboardData.aiInsight} />
+            </View>
+          </AnimatedScreenSection>
         )}
 
         {/* Recent Transactions */}
-        <View className="mb-4">
-          <TransactionList
-            transactions={dashboardData?.recentTransactions || []}
-            currency={currency}
-            onViewAll={() => {
-              const start = dashboardData?.period?.start ?? startDate;
-              const end = dashboardData?.period?.end ?? endDate;
-              router.push({
-                pathname: '/(tabs)/transactions',
-                params: {
-                  ...(start && { startDate: start }),
-                  ...(end && { endDate: end }),
-                  type: 'all',
-                },
-              });
-            }}
-          />
-        </View>
+        <AnimatedScreenSection index={6}>
+          <View className="mb-4">
+            <TransactionList
+              transactions={dashboardData?.recentTransactions || []}
+              currency={currency}
+              onViewAll={() => {
+                const start = dashboardData?.period?.start ?? startDate;
+                const end = dashboardData?.period?.end ?? endDate;
+                router.push({
+                  pathname: '/(tabs)/transactions',
+                  params: {
+                    ...(start && { startDate: start }),
+                    ...(end && { endDate: end }),
+                    type: 'all',
+                  },
+                });
+              }}
+            />
+          </View>
+        </AnimatedScreenSection>
 
         {/* Stats Footer */}
         {dashboardData?.counts && (
-          <View className="flex-row items-center justify-center py-4 mb-2">
-            <Text className="text-xs" style={{ color: colors.textTertiary }}>
-              {dashboardData.counts.totalTransactions} transactions •{' '}
-              {dashboardData.counts.expenseCount} expenses •{' '}
-              {dashboardData.counts.incomeCount} income
-            </Text>
-          </View>
+          <AnimatedScreenSection index={7} variant="slide">
+            <View className="flex-row items-center justify-center py-4 mb-2">
+              <Text className="text-xs" style={{ color: colors.textTertiary }}>
+                {dashboardData.counts.totalTransactions} transactions •{' '}
+                {dashboardData.counts.expenseCount} expenses •{' '}
+                {dashboardData.counts.incomeCount} income
+              </Text>
+            </View>
+          </AnimatedScreenSection>
         )}
       </ScrollView>
     </SafeAreaView>
