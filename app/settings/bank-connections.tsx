@@ -30,7 +30,7 @@ import {
 import { useAuthStore } from '@/store/auth.store';
 import { useSensitiveActionSecurity } from '@/features/security/useSensitiveActionSecurity';
 import type { BankConnection } from '@/features/bank/bankConnection.types';
-import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
+import { AnimatedListItem, AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 
 export default function BankConnectionsScreen() {
   const colors = Colors.light;
@@ -69,8 +69,17 @@ export default function BankConnectionsScreen() {
       if (!allowed) {
         return;
       }
-
-      setShowMono(true);
+      Alert.alert(
+        'Read-only connection',
+        'SEFA can read account details and transaction history for budgeting, but it cannot transfer, withdraw, or move your money. Your bank login is handled by Mono, not entered into SEFA.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Continue',
+            onPress: () => setShowMono(true),
+          },
+        ],
+      );
     });
   };
 
@@ -213,9 +222,20 @@ export default function BankConnectionsScreen() {
         }
       >
         <AnimatedScreenSection index={0} className="mb-4">
-          <Text className="text-sm" style={{ color: colors.textSecondary }}>
-            Link your bank accounts to sync transactions automatically.
-          </Text>
+          <View
+            className="p-4 rounded-2xl"
+            style={{ backgroundColor: colors.primaryBackground }}
+          >
+            <Text className="text-sm font-semibold" style={{ color: colors.primary }}>
+              Read-only bank connection
+            </Text>
+            <Text className="text-sm mt-2" style={{ color: colors.textSecondary }}>
+              SEFA can read account details and transaction history for budgeting, but it cannot transfer, withdraw, or move your money.
+            </Text>
+            <Text className="text-xs mt-2" style={{ color: colors.textTertiary }}>
+              Your bank login is handled by Mono, not entered into SEFA. You can disconnect at any time.
+            </Text>
+          </View>
         </AnimatedScreenSection>
 
         {isLoading && (
@@ -255,28 +275,34 @@ export default function BankConnectionsScreen() {
 
         {hasConnections && (
           <AnimatedScreenSection index={1}>
-          <View>
-            {(connections ?? []).map((connection) => (
-              <BankConnectionCard
-                key={connection.id}
-                connection={connection}
-                onSync={() => handleSync(connection)}
-                onToggleAutoSync={(enabled) => handleToggleAutoSync(connection, enabled)}
-                onDisconnect={() => handleDisconnect(connection)}
-                onViewDetails={() =>
-                  router.push({
-                    pathname: '/settings/sync-details/[id]',
-                    params: {
-                      id: connection.id,
-                      kind: 'connection',
-                    },
-                  })
-                }
-                isSyncing={isSyncingConnection(connection.id)}
-                isUpdating={isUpdatingConnection(connection.id)}
-              />
-            ))}
-          </View>
+            <View>
+              {(connections ?? []).map((connection, index) => (
+                <AnimatedListItem
+                  key={connection.id}
+                  index={index}
+                  total={connections?.length ?? 0}
+                  group="xs"
+                >
+                  <BankConnectionCard
+                    connection={connection}
+                    onSync={() => handleSync(connection)}
+                    onToggleAutoSync={(enabled) => handleToggleAutoSync(connection, enabled)}
+                    onDisconnect={() => handleDisconnect(connection)}
+                    onViewDetails={() =>
+                      router.push({
+                        pathname: '/settings/sync-details/[id]',
+                        params: {
+                          id: connection.id,
+                          kind: 'connection',
+                        },
+                      })
+                    }
+                    isSyncing={isSyncingConnection(connection.id)}
+                    isUpdating={isUpdatingConnection(connection.id)}
+                  />
+                </AnimatedListItem>
+              ))}
+            </View>
           </AnimatedScreenSection>
         )}
       </ScrollView>

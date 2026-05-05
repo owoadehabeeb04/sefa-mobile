@@ -104,6 +104,9 @@ export const BankConnectionCard: React.FC<BankConnectionCardProps> = ({
       : connection.accountName?.trim() || (accountTail ? `Account ••••${accountTail}` : 'Linked Account');
   const syncLabel = lastSync === 'Never' ? 'Pending first sync' : lastSync;
   const isBusy = isSyncing || connection.syncStatus === 'queued' || connection.syncStatus === 'syncing';
+  const accessModeLabel = connection.accessMode === 'read_only' ? 'Read-only access' : 'Linked access';
+  const permissionSummary =
+    connection.permissionSummary || 'Account details and transaction history only';
 
   return (
     <View className="p-4 rounded-2xl mb-3" style={{ backgroundColor: colors.backgroundSecondary }}>
@@ -163,6 +166,18 @@ export const BankConnectionCard: React.FC<BankConnectionCardProps> = ({
             </Text>
           </TouchableOpacity>
         </View>
+      </View>
+
+      <View
+        className="mt-3 px-3 py-2 rounded-xl"
+        style={{ backgroundColor: colors.primaryBackground }}
+      >
+        <Text className="text-xs font-semibold" style={{ color: colors.primary }}>
+          {accessModeLabel}
+        </Text>
+        <Text className="text-xs mt-1" style={{ color: colors.textSecondary }}>
+          Permissions: {permissionSummary}
+        </Text>
       </View>
 
       <View className="flex-row items-center justify-between mt-3">

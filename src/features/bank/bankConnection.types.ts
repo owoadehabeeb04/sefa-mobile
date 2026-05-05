@@ -31,8 +31,56 @@ export interface BankConnection {
   pendingResync?: boolean;
   syncFrequency?: number;
   isPrimary?: boolean;
+  accessMode?: 'read_only';
+  allowedOperations?: string[];
+  forbiddenOperations?: string[];
+  permissionSummary?: string;
+  securityVerifiedAt?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface BankConnectionSecurityEvent {
+  id: string;
+  eventType: string;
+  actorType: 'user' | 'system' | 'webhook';
+  timestamp: string;
+  chainIndex: number;
+  requestMeta?: {
+    ipAddress?: string;
+    userAgent?: string;
+  };
+  metadata?: Record<string, unknown>;
+}
+
+export interface BankConnectionSecuritySummary {
+  connectionId: string;
+  institutionName: string;
+  accountName?: string;
+  accountNumber?: string;
+  provider?: string;
+  accessMode: 'read_only';
+  allowedOperations: string[];
+  forbiddenOperations: string[];
+  permissionSummary: string;
+  securityVerifiedAt?: string;
+  lastSyncAt?: string | null;
+  lastSuccessfulSyncAt?: string | null;
+  credentialHandling: {
+    rawBankCredentialsCollected: boolean;
+    providerHostedAuthentication: boolean;
+    encryptedTokenStorage: boolean;
+  };
+  webhookSecurity: {
+    type: string;
+    enabled: boolean;
+  };
+  audit: {
+    chainValid: boolean;
+    checkedEntries: number;
+    checkedAt?: string;
+  };
+  recentEvents: BankConnectionSecurityEvent[];
 }
 
 export interface BankConnectionsResponse {
@@ -45,6 +93,12 @@ export interface BankConnectionsResponse {
 export interface BankConnectionResponse {
   success: boolean;
   data: BankConnection;
+  message?: string;
+}
+
+export interface BankConnectionSecurityResponse {
+  success: boolean;
+  data: BankConnectionSecuritySummary;
   message?: string;
 }
 

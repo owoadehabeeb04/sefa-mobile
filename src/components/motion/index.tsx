@@ -243,7 +243,7 @@ export function AnimatedListItem({
   style,
   className,
   group = 'sm',
-  variant = 'slide',
+  variant = 'fade',
   maxAnimated = MAX_STAGGERED_ITEMS,
 }: AnimatedListItemProps) {
   const preset = shouldAnimateListItem(index, total, maxAnimated) ? 'subtle' : 'none';
@@ -251,9 +251,15 @@ export function AnimatedListItem({
 
   if (variant === 'fade') {
     return (
-      <FadeIn delay={delay} style={style} className={className} preset={preset}>
+      <FadeUp
+        delay={delay}
+        duration={260}
+        style={style}
+        className={className}
+        preset={preset}
+      >
         {children}
-      </FadeIn>
+      </FadeUp>
     );
   }
 

@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useRetryFailedSyncs, useSyncHistory, useSyncStats } from '@/features/bank/sync.hooks';
-import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
+import { AnimatedListItem, AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 
 const colors = Colors.light;
 
@@ -116,58 +116,64 @@ export default function SyncHistoryScreen() {
           </AnimatedScreenSection>
         )}
 
-        {historyItems.map((item: any) => {
+        {historyItems.map((item: any, index: number) => {
           const connectionId = getConnectionId(item);
           const syncLogId = item.syncLogId || item._id;
           const statusColor = getStatusColor(item.status);
 
           return (
-            <TouchableOpacity
+            <AnimatedListItem
               key={syncLogId}
-              className="p-4 rounded-2xl mb-3"
-              style={{ backgroundColor: colors.backgroundSecondary }}
-              onPress={() =>
-                syncLogId &&
-                router.push({
-                  pathname: '/settings/sync-details/[id]',
-                  params: {
-                    id: syncLogId,
-                    kind: 'sync-log',
-                    connectionId: connectionId || '',
-                  },
-                })
-              }
-              disabled={!syncLogId}
+              index={index}
+              total={historyItems.length}
+              group="xs"
             >
-              <View className="flex-row items-center justify-between">
-                <Text className="text-base font-semibold" style={{ color: colors.text }}>
-                  {getConnectionLabel(item)}
+              <TouchableOpacity
+                className="p-4 rounded-2xl mb-3"
+                style={{ backgroundColor: colors.backgroundSecondary }}
+                onPress={() =>
+                  syncLogId &&
+                  router.push({
+                    pathname: '/settings/sync-details/[id]',
+                    params: {
+                      id: syncLogId,
+                      kind: 'sync-log',
+                      connectionId: connectionId || '',
+                    },
+                  })
+                }
+                disabled={!syncLogId}
+              >
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-base font-semibold" style={{ color: colors.text }}>
+                    {getConnectionLabel(item)}
+                  </Text>
+                  <View className="flex-row items-center">
+                    <View className="w-2 h-2 rounded-full mr-1" style={{ backgroundColor: statusColor }} />
+                    <Text className="text-xs" style={{ color: colors.textTertiary }}>
+                      {item.status || 'unknown'}
+                    </Text>
+                  </View>
+                </View>
+                <Text className="text-xs mt-1" style={{ color: colors.textTertiary }}>
+                  {formatDateTime(item.startedAt)}
                 </Text>
-                <View className="flex-row items-center">
-                  <View className="w-2 h-2 rounded-full mr-1" style={{ backgroundColor: statusColor }} />
-                  <Text className="text-xs" style={{ color: colors.textTertiary }}>
-                    {item.status || 'unknown'}
+                <Text className="text-xs mt-2" style={{ color: colors.textSecondary }}>
+                  Trigger: {item.triggerSource || item.syncType || 'unknown'}
+                </Text>
+                <View className="flex-row items-center justify-between mt-2">
+                  <Text className="text-xs" style={{ color: colors.textSecondary }}>
+                    Imported: {item.results?.importedCount ?? 0}
+                  </Text>
+                  <Text className="text-xs" style={{ color: colors.textSecondary }}>
+                    Duplicates: {item.results?.duplicateCount ?? 0}
+                  </Text>
+                  <Text className="text-xs" style={{ color: colors.textSecondary }}>
+                    Issues: {(item.results?.failedCount ?? 0) + (item.results?.skippedCount ?? 0)}
                   </Text>
                 </View>
-              </View>
-              <Text className="text-xs mt-1" style={{ color: colors.textTertiary }}>
-                {formatDateTime(item.startedAt)}
-              </Text>
-              <Text className="text-xs mt-2" style={{ color: colors.textSecondary }}>
-                Trigger: {item.triggerSource || item.syncType || 'unknown'}
-              </Text>
-              <View className="flex-row items-center justify-between mt-2">
-                <Text className="text-xs" style={{ color: colors.textSecondary }}>
-                  Imported: {item.results?.importedCount ?? 0}
-                </Text>
-                <Text className="text-xs" style={{ color: colors.textSecondary }}>
-                  Duplicates: {item.results?.duplicateCount ?? 0}
-                </Text>
-                <Text className="text-xs" style={{ color: colors.textSecondary }}>
-                  Issues: {(item.results?.failedCount ?? 0) + (item.results?.skippedCount ?? 0)}
-                </Text>
-              </View>
-            </TouchableOpacity>
+              </TouchableOpacity>
+            </AnimatedListItem>
           );
         })}
       </ScrollView>

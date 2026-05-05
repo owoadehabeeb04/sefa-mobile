@@ -9,6 +9,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { Transaction, TransactionFilterType } from '@/types/dashboard.types';
 import { TransactionItem } from './TransactionItem';
+import { AnimatedListItem } from '@/src/components/motion';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -112,11 +113,14 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             </View>
           ) : (
             filteredTransactions.map((transaction, index) => (
-              <TransactionItem
+              <AnimatedListItem
                 key={transaction.id}
-                transaction={transaction}
-                currency={currency}
-              />
+                index={index}
+                total={filteredTransactions.length}
+                group="xs"
+              >
+                <TransactionItem transaction={transaction} currency={currency} />
+              </AnimatedListItem>
             ))
           )}
         </View>

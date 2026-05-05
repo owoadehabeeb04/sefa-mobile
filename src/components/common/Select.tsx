@@ -7,6 +7,7 @@ import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet, Animated, Di
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
+import { AnimatedListItem } from '@/src/components/motion';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -83,7 +84,7 @@ export const Select: React.FC<SelectProps> = ({
         }),
       ]).start();
     }
-  }, [isOpen]);
+  }, [fadeAnim, isOpen, slideAnim]);
 
   const handleSelect = (optionValue: string) => {
     if (handleChange) {
@@ -222,44 +223,46 @@ export const Select: React.FC<SelectProps> = ({
             <FlatList
               data={options}
               keyExtractor={(item) => item.value}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  onPress={() => handleSelect(item.value)}
-                  className="py-4 px-4 rounded-lg mb-1"
-                  activeOpacity={0.7}
-                  style={{
-                    backgroundColor: value === item.value ? colors.primaryBackground : 'transparent',
-                  }}
-                >
-                  <View className="flex-row items-center justify-between">
-                    <View className="flex-row items-center flex-1">
-                      {item.icon && (
-                        <View
-                          className="w-8 h-8 rounded-full items-center justify-center mr-3"
-                          style={{ backgroundColor: item.color ? `${item.color}15` : colors.backgroundSecondary }}
+              renderItem={({ item, index }) => (
+                <AnimatedListItem index={index} total={options.length} group="xs">
+                  <TouchableOpacity
+                    onPress={() => handleSelect(item.value)}
+                    className="py-4 px-4 rounded-lg mb-1"
+                    activeOpacity={0.7}
+                    style={{
+                      backgroundColor: value === item.value ? colors.primaryBackground : 'transparent',
+                    }}
+                  >
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-row items-center flex-1">
+                        {item.icon && (
+                          <View
+                            className="w-8 h-8 rounded-full items-center justify-center mr-3"
+                            style={{ backgroundColor: item.color ? `${item.color}15` : colors.backgroundSecondary }}
+                          >
+                            <Ionicons
+                              name={item.icon as any}
+                              size={16}
+                              color={item.color || colors.primary}
+                            />
+                          </View>
+                        )}
+                        <Text
+                          className="text-base"
+                          style={{
+                            color: value === item.value ? colors.primary : colors.text,
+                            fontWeight: value === item.value ? '600' : '400',
+                          }}
                         >
-                          <Ionicons
-                            name={item.icon as any}
-                            size={16}
-                            color={item.color || colors.primary}
-                          />
-                        </View>
+                          {item.label}
+                        </Text>
+                      </View>
+                      {value === item.value && (
+                        <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
                       )}
-                      <Text
-                        className="text-base"
-                        style={{
-                          color: value === item.value ? colors.primary : colors.text,
-                          fontWeight: value === item.value ? '600' : '400',
-                        }}
-                      >
-                        {item.label}
-                      </Text>
                     </View>
-                    {value === item.value && (
-                      <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
-                    )}
-                  </View>
-                </TouchableOpacity>
+                  </TouchableOpacity>
+                </AnimatedListItem>
               )}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: 20 }}

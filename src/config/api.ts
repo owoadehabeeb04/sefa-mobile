@@ -123,6 +123,7 @@ export const API_ENDPOINTS = {
   BANK: {
     CONNECT: '/bank/connect',
     CONNECTIONS: '/bank/connections',
+    SECURITY: '/bank/connections',
   },
 
   // Sync operations (bank connections)

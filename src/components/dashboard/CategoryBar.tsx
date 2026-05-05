@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { CategoryBreakdown } from '@/types/dashboard.types';
+import { AnimatedListItem } from '@/src/components/motion';
 
 interface CategoryBarProps {
   category: CategoryBreakdown;
@@ -136,13 +137,19 @@ export const SpendingChart: React.FC<SpendingChartProps> = ({
         {title}
       </Text>
 
-      {categories.map((category) => (
-        <CategoryBar
+      {categories.map((category, index) => (
+        <AnimatedListItem
           key={category.id}
-          category={category}
-          maxAmount={maxAmount}
-          currency={currency}
-        />
+          index={index}
+          total={categories.length}
+          group="xs"
+        >
+          <CategoryBar
+            category={category}
+            maxAmount={maxAmount}
+            currency={currency}
+          />
+        </AnimatedListItem>
       ))}
     </View>
   );

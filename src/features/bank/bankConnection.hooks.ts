@@ -6,13 +6,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   connectBankAccount,
   disconnectBankConnection,
+  getBankConnectionSecurity,
   getBankConnections,
   syncBankConnection,
   updateSyncSettings,
 } from './bankConnection.service';
-import type { BankConnection } from './bankConnection.types';
+import type { BankConnection, BankConnectionSecuritySummary } from './bankConnection.types';
 
 export const BANK_CONNECTIONS_QUERY_KEY = ['bank-connections'];
+export const bankConnectionSecurityQueryKey = (connectionId: string) => ['bank-connection-security', connectionId];
 export const isConnectionSyncActive = (connection?: Pick<BankConnection, 'syncStatus'> | null) =>
   connection?.syncStatus === 'queued' || connection?.syncStatus === 'syncing';
 
@@ -29,6 +31,15 @@ export const useBankConnections = () => {
   });
 };
 
+export const useBankConnectionSecurity = (connectionId?: string) => {
+  return useQuery<BankConnectionSecuritySummary>({
+    queryKey: bankConnectionSecurityQueryKey(connectionId || ''),
+    queryFn: () => getBankConnectionSecurity(connectionId || ''),
+    enabled: Boolean(connectionId),
+    staleTime: 30 * 1000,
+  });
+};
+
 export const useConnectBank = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -36,6 +47,7 @@ export const useConnectBank = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BANK_CONNECTIONS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: ['sync-history'] });
+      queryClient.invalidateQueries({ queryKey: ['bank-connection-security'] });
     },
   });
 };
@@ -48,6 +60,7 @@ export const useSyncConnection = () => {
       queryClient.invalidateQueries({ queryKey: BANK_CONNECTIONS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: ['sync-history'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['bank-connection-security'] });
     },
   });
 };
@@ -59,6 +72,7 @@ export const useDisconnectBank = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BANK_CONNECTIONS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['bank-connection-security'] });
     },
   });
 };
@@ -70,6 +84,7 @@ export const useUpdateConnectionSettings = () => {
       updateSyncSettings(connectionId, { autoSync }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BANK_CONNECTIONS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['bank-connection-security'] });
     },
   });
 };

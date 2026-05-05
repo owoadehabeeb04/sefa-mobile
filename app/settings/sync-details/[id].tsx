@@ -10,7 +10,8 @@ import {
   useConnectionSyncStatus,
   useSyncLogDetails,
 } from '@/features/bank/sync.hooks';
-import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
+import { useBankConnectionSecurity } from '@/features/bank/bankConnection.hooks';
+import { AnimatedListItem, AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 
 const colors = Colors.light;
 
@@ -32,6 +33,14 @@ const getStatusColor = (status?: string) => {
   if (status === 'failed') return colors.error;
   if (status === 'queued' || status === 'syncing') return colors.primary;
   return colors.textTertiary;
+};
+
+const formatEventLabel = (value?: string) => {
+  if (!value) return 'Unknown event';
+  return value
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 };
 
 export default function SyncDetailsScreen() {
@@ -65,6 +74,8 @@ export default function SyncDetailsScreen() {
     (typeof syncLogData?.connectionId === 'string'
       ? syncLogData.connectionId
       : syncLogData?.connectionId?._id || '');
+  const securityDetails = useBankConnectionSecurity(resolvedConnectionId);
+  const securityData = securityDetails.data;
 
   const institutionLabel =
     connectionData?.institutionName ||
@@ -77,6 +88,9 @@ export default function SyncDetailsScreen() {
     }
     if (selectedSyncLogId) {
       syncLogDetails.refetch();
+    }
+    if (resolvedConnectionId) {
+      securityDetails.refetch();
     }
   };
 
@@ -215,15 +229,19 @@ export default function SyncDetailsScreen() {
             </Text>
           )}
 
-          {(syncLogData?.errorList || []).slice(0, 3).map((item, index) => (
-            <Text
+          {(syncLogData?.errorList || []).slice(0, 3).map((item, index, list) => (
+            <AnimatedListItem
               key={`${item.externalId || 'error'}-${index}`}
-              className="text-xs mt-1"
-              style={{ color: colors.error }}
+              index={index}
+              total={list.length}
+              group="xs"
+              variant="fade"
             >
-              {item.stage ? `${item.stage}: ` : ''}
-              {item.message}
-            </Text>
+              <Text className="text-xs mt-1" style={{ color: colors.error }}>
+                {item.stage ? `${item.stage}: ` : ''}
+                {item.message}
+              </Text>
+            </AnimatedListItem>
           ))}
 
           {/* {!!selectedSyncLogId && (
@@ -240,8 +258,63 @@ export default function SyncDetailsScreen() {
           )} */}
         </AnimatedScreenSection>
 
+        <AnimatedScreenSection index={3} className="p-5 rounded-2xl mb-4" style={{ backgroundColor: colors.backgroundSecondary }}>
+          <Text className="text-sm font-semibold" style={{ color: colors.text }}>
+            Security Details
+          </Text>
+          <Text className="text-xs mt-2" style={{ color: colors.textSecondary }}>
+            Access Mode: {securityData?.accessMode === 'read_only' ? 'Read-only' : 'Unknown'}
+          </Text>
+          <Text className="text-xs mt-1" style={{ color: colors.textSecondary }}>
+            Permissions: {securityData?.permissionSummary || 'Account details and transaction history only'}
+          </Text>
+          <Text className="text-xs mt-1" style={{ color: colors.textSecondary }}>
+            Login Handling: {securityData?.credentialHandling?.providerHostedAuthentication ? 'Mono hosted authentication' : 'Provider authentication'}
+          </Text>
+          <Text className="text-xs mt-1" style={{ color: colors.textSecondary }}>
+            Tokens At Rest: {securityData?.credentialHandling?.encryptedTokenStorage ? 'Encrypted' : 'Unknown'}
+          </Text>
+          <Text className="text-xs mt-1" style={{ color: colors.textSecondary }}>
+            Security Verified: {formatDateTime(securityData?.securityVerifiedAt)}
+          </Text>
+          <Text className="text-xs mt-1" style={{ color: colors.textSecondary }}>
+            Audit Chain: {securityData?.audit?.chainValid ? 'Valid' : 'Needs review'}
+          </Text>
+          <Text className="text-xs mt-1" style={{ color: colors.textSecondary }}>
+            Recent Audit Entries: {securityData?.audit?.checkedEntries ?? 0}
+          </Text>
+
+          {securityDetails.isLoading && (
+            <Text className="text-xs mt-3" style={{ color: colors.textTertiary }}>
+              Loading security summary...
+            </Text>
+          )}
+
+          {securityData?.recentEvents?.length ? (
+            <View className="mt-4">
+              {securityData.recentEvents.map((event, index, list) => (
+                <AnimatedListItem
+                  key={event.id}
+                  index={index}
+                  total={list.length}
+                  group="xs"
+                >
+                  <View className="py-3 border-t" style={{ borderTopColor: colors.border }}>
+                    <Text className="text-xs font-semibold" style={{ color: colors.text }}>
+                      {formatEventLabel(event.eventType)}
+                    </Text>
+                    <Text className="text-xs mt-1" style={{ color: colors.textSecondary }}>
+                      {event.actorType.toUpperCase()} • {formatDateTime(event.timestamp)}
+                    </Text>
+                  </View>
+                </AnimatedListItem>
+              ))}
+            </View>
+          ) : null}
+        </AnimatedScreenSection>
+
         {isActivelySyncing && !!resolvedConnectionId && (
-          <AnimatedScreenSection index={3}>
+          <AnimatedScreenSection index={4}>
             <TouchableOpacity
             onPress={handleCancelSync}
             className="px-4 py-3 rounded-xl items-center"
