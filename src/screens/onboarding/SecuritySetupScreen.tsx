@@ -133,7 +133,7 @@ export default function SecuritySetupScreen() {
         automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
         contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 48, flexGrow: 1 }}
       >
-        <ScaleIn style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 28 }}>
+        <ScaleIn preset="none" style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 28 }}>
           <SvgXml xml={getLogoSvg(colors.primary)} width={40} height={42} />
           <Text
             style={{
@@ -148,7 +148,7 @@ export default function SecuritySetupScreen() {
           </Text>
         </ScaleIn>
 
-        <AnimatedScreenSection index={0} variant="scale"
+        <AnimatedScreenSection preset="none" index={0} variant="scale"
           style={{
             width: 68,
             height: 68,
@@ -162,7 +162,7 @@ export default function SecuritySetupScreen() {
           <Ionicons name="shield-checkmark-outline" size={30} color={colors.primary} />
         </AnimatedScreenSection>
 
-        <FadeUp>
+        <FadeUp preset="none">
           <Text
             style={{
               color: colors.text,
@@ -187,6 +187,7 @@ export default function SecuritySetupScreen() {
         </FadeUp>
 
         <AnimatedScreenSection
+          preset="none"
           index={1}
           style={{
             backgroundColor: colors.backgroundSecondary,

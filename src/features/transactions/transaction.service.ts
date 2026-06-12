@@ -22,6 +22,8 @@ const mapTransactionFromApi = (t: any): Transaction => ({
   amount: t.amount,
   description: t.description,
   date: t.date,
+  isImported: Boolean(t.isImported),
+  statementTimeProvided: Boolean(t.statementTimeProvided),
   paymentMethod: t.paymentMethod || (t.type === 'expense' ? 'cash' : 'bank_transfer'),
   location: (t as any).location,
   source: (t as any).source,

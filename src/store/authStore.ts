@@ -3,7 +3,6 @@
  */
 
 import { create } from 'zustand';
-import * as SecureStore from 'expo-secure-store';
 import { storeTokens, clearTokens } from '@/services/api';
 import type { User } from '@/features/auth/auth.types';
 

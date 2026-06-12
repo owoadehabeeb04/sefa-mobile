@@ -3,7 +3,10 @@ export type UnlockReason = 'app_launch' | 'app_resume' | 'sensitive_action';
 export type SensitiveAction =
   | 'connect_bank'
   | 'disconnect_bank'
-  | 'change_password';
+  | 'change_password'
+  | 'assistant_history'
+  | 'statement_import_history'
+  | 'statement_import_confirm';
 
 export interface AppSecuritySettings {
   lockEnabled: boolean;

@@ -23,7 +23,31 @@ export default function TransactionDetailsScreen({ transaction }: TransactionDet
   const colors = Colors[colorScheme];
 
   const isExpense = transaction.type === 'expense';
-  const iconColor = transaction.category?.color || (isExpense ? colors.error : colors.success);
+  const normalizedCategory = (() => {
+    const rawCategory = (transaction as any).category;
+
+    if (rawCategory && typeof rawCategory === 'object') {
+      return {
+        name: rawCategory.name || 'Unknown Category',
+        icon: rawCategory.icon || (isExpense ? 'remove-circle' : 'add-circle'),
+        color: rawCategory.color || (isExpense ? colors.error : colors.success),
+        type: rawCategory.type || transaction.type,
+      };
+    }
+
+    if (typeof rawCategory === 'string' && rawCategory.trim()) {
+      return {
+        name: rawCategory,
+        icon: (transaction as any).icon || (isExpense ? 'remove-circle' : 'add-circle'),
+        color: (transaction as any).color || (isExpense ? colors.error : colors.success),
+        type: transaction.type,
+      };
+    }
+
+    return null;
+  })();
+
+  const iconColor = normalizedCategory?.color || (isExpense ? colors.error : colors.success);
 
   const formatAmount = (value: number) => {
     return value.toLocaleString('en-NG', {
@@ -48,6 +72,14 @@ export default function TransactionDetailsScreen({ transaction }: TransactionDet
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const getTimeValue = () => {
+    if (transaction.isImported && transaction.statementTimeProvided === false) {
+      return 'Not provided on statement';
+    }
+
+    return formatTime(transaction.date);
   };
 
   const DetailRow = ({
@@ -106,7 +138,7 @@ export default function TransactionDetailsScreen({ transaction }: TransactionDet
             style={{ backgroundColor: `${iconColor}15` }}
           >
             <Ionicons
-              name={(transaction.category?.icon as any) || (isExpense ? 'remove-circle' : 'add-circle')}
+              name={(normalizedCategory?.icon as any) || (isExpense ? 'remove-circle' : 'add-circle')}
               size={32}
               color={iconColor}
             />
@@ -115,7 +147,7 @@ export default function TransactionDetailsScreen({ transaction }: TransactionDet
             {isExpense ? '-' : '+'}₦{formatAmount(transaction.amount)}
           </Text>
           <Text className="text-base font-semibold" style={{ color: colors.text }}>
-            {transaction.category?.name || 'Unknown Category'}
+            {normalizedCategory?.name || 'Unknown Category'}
           </Text>
           <View
             className="px-3 py-1 rounded-full mt-2"
@@ -169,7 +201,7 @@ export default function TransactionDetailsScreen({ transaction }: TransactionDet
           <DetailRow
             icon="time-outline"
             label="Time"
-            value={formatTime(transaction.date)}
+            value={getTimeValue()}
           />
 
           <DetailRow
@@ -260,7 +292,7 @@ export default function TransactionDetailsScreen({ transaction }: TransactionDet
         </AnimatedScreenSection>
 
         {/* Category Info */}
-        {transaction.category && (
+        {normalizedCategory && (
           <AnimatedScreenSection
             index={2}
             className="p-5 rounded-2xl mb-6"
@@ -272,20 +304,20 @@ export default function TransactionDetailsScreen({ transaction }: TransactionDet
             <View className="flex-row items-center">
               <View
                 className="w-12 h-12 rounded-full items-center justify-center mr-3"
-                style={{ backgroundColor: `${transaction.category.color}15` }}
+                style={{ backgroundColor: `${normalizedCategory.color}15` }}
               >
                 <Ionicons
-                  name={transaction.category.icon as any}
+                  name={normalizedCategory.icon as any}
                   size={24}
-                  color={transaction.category.color}
+                  color={normalizedCategory.color}
                 />
               </View>
               <View className="flex-1">
                 <Text className="text-base font-semibold" style={{ color: colors.text }}>
-                  {transaction.category.name}
+                  {normalizedCategory.name}
                 </Text>
                 <Text className="text-xs mt-1" style={{ color: colors.textTertiary }}>
-                  {transaction.category.type === 'expense' ? 'Expense Category' : 'Income Category'}
+                  {normalizedCategory.type === 'expense' ? 'Expense Category' : 'Income Category'}
                 </Text>
               </View>
             </View>

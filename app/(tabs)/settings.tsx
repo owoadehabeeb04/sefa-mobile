@@ -12,6 +12,7 @@ import { Colors } from '@/constants/theme';
 import { useAuthStore } from '@/store/auth.store';
 import { useAppLockStore } from '@/store/appLock.store';
 import { describeAppLockMethod } from '@/features/security/appLock.service';
+import { useSensitiveActionSecurity } from '@/features/security/useSensitiveActionSecurity';
 import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 
 export default function SettingsScreen() {
@@ -20,6 +21,7 @@ export default function SettingsScreen() {
   const queryClient = useQueryClient();
   const { clearAuth, user } = useAuthStore();
   const { settings: appLockSettings, biometricStatus } = useAppLockStore();
+  const { requireVerification } = useSensitiveActionSecurity();
 
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -42,132 +44,177 @@ export default function SettingsScreen() {
     subtitle,
     onPress,
     showBadge,
+    danger,
   }: {
     icon: keyof typeof Ionicons.glyphMap;
     title: string;
     subtitle?: string;
     onPress?: () => void;
     showBadge?: boolean;
+    danger?: boolean;
   }) => (
     <TouchableOpacity
-      className="flex-row items-center py-4 px-4 rounded-xl mb-2"
-      style={{ backgroundColor: colors.backgroundSecondary }}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 13,
+        paddingHorizontal: 16,
+        backgroundColor: colors.backgroundSecondary,
+        borderRadius: 14,
+        marginBottom: 8,
+      }}
       onPress={onPress}
       activeOpacity={0.7}
     >
       <View
-        className="w-10 h-10 rounded-full items-center justify-center mr-3"
-        style={{ backgroundColor: colors.primaryBackground }}
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: 12,
+          backgroundColor: danger ? `${colors.error}12` : colors.primaryBackground,
+        }}
       >
-        <Ionicons name={icon} size={20} color={colors.primary} />
+        <Ionicons name={icon} size={18} color={danger ? colors.error : colors.primary} />
       </View>
-      <View className="flex-1">
-        <Text className="text-base font-semibold" style={{ color: colors.text }}>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 15, fontWeight: '500', color: danger ? colors.error : colors.text }}>
           {title}
         </Text>
-        {subtitle && (
-          <Text className="text-xs mt-0.5" style={{ color: colors.textTertiary }}>
+        {subtitle ? (
+          <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 1 }}>
             {subtitle}
           </Text>
-        )}
+        ) : null}
       </View>
       {showBadge && (
         <View
-          className="px-2 py-1 rounded mr-2"
-          style={{ backgroundColor: colors.primaryBackground }}
+          style={{
+            paddingHorizontal: 8,
+            paddingVertical: 3,
+            borderRadius: 6,
+            backgroundColor: colors.primaryBackground,
+            marginRight: 8,
+          }}
         >
-          <Text className="text-xs font-semibold" style={{ color: colors.primary }}>
-            Soon
-          </Text>
+          <Text style={{ fontSize: 11, fontWeight: '600', color: colors.primary }}>Soon</Text>
         </View>
       )}
-      <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+      {!danger && (
+        <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+      )}
     </TouchableOpacity>
   );
 
+  const SectionLabel = ({ label }: { label: string }) => (
+    <Text
+      style={{
+        fontSize: 11,
+        fontWeight: '700',
+        letterSpacing: 0.8,
+        color: colors.textTertiary,
+        textTransform: 'uppercase',
+        marginBottom: 8,
+        marginTop: 4,
+        paddingHorizontal: 4,
+      }}
+    >
+      {label}
+    </Text>
+  );
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
-        <FadeUp className="pt-4 pb-6">
-          <Text className="text-2xl font-bold" style={{ color: colors.text }}>
-            Settings
-          </Text>
-          <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
-            Manage your account and preferences
-          </Text>
+        <FadeUp style={{ paddingTop: 16, paddingBottom: 20 }}>
+          <Text style={{ fontSize: 28, fontWeight: '700', color: colors.text }}>Settings</Text>
         </FadeUp>
 
         {/* User Card */}
         <AnimatedScreenSection
           index={0}
-          className="p-5 rounded-2xl mb-6"
-          style={{ backgroundColor: colors.primaryBackground }}
+          style={{
+            backgroundColor: colors.primaryBackground,
+            borderRadius: 20,
+            padding: 16,
+            marginBottom: 24,
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
         >
-          <View className="flex-row items-center">
-            <View
-              className="w-16 h-16 rounded-full items-center justify-center mr-4"
-              style={{ backgroundColor: colors.primary }}
-            >
-              <Text className="text-2xl font-bold" style={{ color: '#FFFFFF' }}>
-                {user?.name?.charAt(0).toUpperCase() || 'U'}
-              </Text>
-            </View>
-            <View className="flex-1">
-              <Text className="text-xl font-bold mb-1" style={{ color: colors.text }}>
-                {user?.name || 'User'}
-              </Text>
-              <Text className="text-sm" style={{ color: colors.textSecondary }}>
-                {user?.email || 'user@example.com'}
-              </Text>
-            </View>
+          <View
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: 26,
+              backgroundColor: colors.primary,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 14,
+            }}
+          >
+            <Text style={{ fontSize: 22, fontWeight: '700', color: '#FFFFFF' }}>
+              {user?.name?.charAt(0).toUpperCase() || 'U'}
+            </Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text }}>
+              {user?.name || 'User'}
+            </Text>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>
+              {user?.email || 'user@example.com'}
+            </Text>
           </View>
         </AnimatedScreenSection>
 
-        {/* Settings Sections */}
-        <AnimatedScreenSection index={1}>
-        <View className="mb-6">
-          <Text
-            className="text-xs font-semibold mb-3 px-1"
-            style={{ color: colors.textTertiary }}
-          >
-            FINANCIAL
-          </Text>
+        {/* Financial */}
+        <AnimatedScreenSection index={1} style={{ marginBottom: 20 }}>
+          <SectionLabel label="Financial" />
           <SettingsItem
             icon="pricetag-outline"
             title="Categories"
-            subtitle="Manage expense & income categories"
+            subtitle="Expense & income categories"
             onPress={() => router.push('/settings/categories')}
           />
           <SettingsItem
             icon="wallet-outline"
-            title="Budget Settings"
-            subtitle="Set monthly spending limits"
+            title="Budget"
+            subtitle="Monthly spending limit"
             onPress={() => router.push('/settings/budget')}
           />
           <SettingsItem
             icon="link-outline"
             title="Bank Connections"
-            subtitle="Connect and sync your bank accounts"
+            subtitle="Sync your bank accounts"
             onPress={() => router.push('/settings/bank-connections')}
           />
           <SettingsItem
             icon="pulse-outline"
             title="Sync Activity"
-            subtitle="View sync status and history"
+            subtitle="View sync history"
             onPress={() => router.push('/settings/sync-history')}
           />
-        </View>
+          <SettingsItem
+            icon="document-text-outline"
+            title="Statement Imports"
+            subtitle="Upload PDF bank statements"
+            onPress={async () => {
+              const allowed = await requireVerification('statement_import_history');
+              if (allowed) router.push('/settings/statement-import');
+            }}
+          />
         </AnimatedScreenSection>
 
-        <AnimatedScreenSection index={2}>
-        <View className="mb-6">
-          <Text
-            className="text-xs font-semibold mb-3 px-1"
-            style={{ color: colors.textTertiary }}
-          >
-            SECURITY
-          </Text>
+        {/* Security */}
+        <AnimatedScreenSection index={2} style={{ marginBottom: 20 }}>
+          <SectionLabel label="Security" />
           <SettingsItem
             icon="shield-checkmark-outline"
             title="App Lock & PIN"
@@ -177,50 +224,35 @@ export default function SettingsScreen() {
           <SettingsItem
             icon="key-outline"
             title="Change Password"
-            subtitle="Update your password"
             onPress={() => router.push('/settings/change-password')}
           />
-        </View>
         </AnimatedScreenSection>
 
+        {/* Logout */}
         <AnimatedScreenSection index={3}>
-        <View className="mb-6">
-          <Text
-            className="text-xs font-semibold mb-3 px-1"
-            style={{ color: colors.textTertiary }}
-          >
-            DATA
-          </Text>
-          <SettingsItem
-            icon="trash-outline"
-            title="Clear Data"
-            subtitle="Delete all transactions"
-            onPress={() => router.push('/settings/clear-data')}
-          />
-        </View>
-        </AnimatedScreenSection>
-
-        {/* Logout Button */}
-        <AnimatedScreenSection index={4}>
           <TouchableOpacity
-            className="flex-row items-center justify-center py-4 px-4 rounded-xl mb-4"
-            style={{ backgroundColor: `${colors.error}15` }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingVertical: 14,
+              borderRadius: 14,
+              backgroundColor: `${colors.error}12`,
+            }}
             onPress={handleLogout}
             activeOpacity={0.7}
           >
-            <Ionicons name="log-out-outline" size={20} color={colors.error} />
-            <Text className="text-base font-semibold ml-2" style={{ color: colors.error }}>
+            <Ionicons name="log-out-outline" size={18} color={colors.error} />
+            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.error, marginLeft: 8 }}>
               Logout
             </Text>
           </TouchableOpacity>
         </AnimatedScreenSection>
 
-        {/* App Version */}
-        <AnimatedScreenSection index={5} variant="slide">
-          <View className="items-center py-4">
-            <Text className="text-xs" style={{ color: colors.textTertiary }}>
-              SEFA v1.0.0
-            </Text>
+        {/* Version */}
+        <AnimatedScreenSection index={4}>
+          <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+            <Text style={{ fontSize: 12, color: colors.textTertiary }}>SEFA v1.0.0</Text>
           </View>
         </AnimatedScreenSection>
       </ScrollView>

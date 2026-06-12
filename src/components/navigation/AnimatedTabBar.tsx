@@ -18,7 +18,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 // Badge removed — notifications is no longer a tab
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const VISIBLE_TAB_NAMES = ['index', 'add', 'transactions', 'insights', 'settings'] as const;
+const VISIBLE_TAB_NAMES = ['index', 'transactions', 'assistant', 'insights', 'settings'] as const;
 
 export function AnimatedTabBar({
   state,
@@ -58,9 +58,9 @@ export function AnimatedTabBar({
         focused: 'home',
         unfocused: 'home-outline',
       },
-      add: {
-        focused: 'add-circle',
-        unfocused: 'add-circle-outline',
+      assistant: {
+        focused: 'chatbubble-ellipses',
+        unfocused: 'chatbubble-ellipses-outline',
       },
       transactions: {
         focused: 'list',
@@ -87,7 +87,7 @@ export function AnimatedTabBar({
   const getLabel = (routeName: string): string => {
     const labels: Record<string, string> = {
       index: 'Home',
-      add: 'Add',
+      assistant: 'SEFA',
       transactions: 'Transactions',
       insights: 'Insights',
       notifications: 'Alerts',
@@ -148,9 +148,6 @@ export function AnimatedTabBar({
 
             const iconName = getIconName(route.name, isFocused);
             const label = getLabel(route.name);
-            const isAddButton = route.name === 'add';
-
-
             return (
               <Pressable
                 key={route.key}
@@ -167,19 +164,13 @@ export function AnimatedTabBar({
                     backgroundColor: isFocused ? `${colors.primary}15` : 'transparent',
                   }}
                 >
-                  {/* Icon */}
                   <View className="mb-0.5">
-                    <View>
-                      <Ionicons
-                        name={iconName as any}
-                        size={isAddButton ? 26 : 22}
-                        color={isFocused ? colors.primary : colors.tabIconDefault}
-                      />
-
-                    </View>
+                    <Ionicons
+                      name={iconName as any}
+                      size={22}
+                      color={isFocused ? colors.primary : colors.tabIconDefault}
+                    />
                   </View>
-
-                  {/* Label */}
                   <Text
                     className="text-[10px] font-semibold"
                     style={{

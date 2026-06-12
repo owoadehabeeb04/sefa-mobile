@@ -18,6 +18,8 @@ export interface Transaction {
   amount: number;
   description?: string;
   date: string;
+  isImported?: boolean;
+  statementTimeProvided?: boolean;
   type: 'expense' | 'income';
   paymentMethod?: string;
   location?: string;

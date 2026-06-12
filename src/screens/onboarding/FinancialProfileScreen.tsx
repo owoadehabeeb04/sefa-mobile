@@ -166,7 +166,7 @@ export default function OnboardingSetupScreen() {
           contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }}
           showsVerticalScrollIndicator={false}
         >
-          <ScaleIn style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 24, paddingBottom: 24 }}>
+          <ScaleIn preset="none" style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 24, paddingBottom: 24 }}>
             <SvgXml xml={getLogoSvg(colors.primary)} width={40} height={42} />
             <Text
               style={{
@@ -181,7 +181,7 @@ export default function OnboardingSetupScreen() {
             </Text>
           </ScaleIn>
 
-          <FadeUp>
+          <FadeUp preset="none">
             <Text
               style={{
                 color: colors.text,
@@ -206,6 +206,7 @@ export default function OnboardingSetupScreen() {
           </FadeUp>
 
           <AnimatedScreenSection
+            preset="none"
             index={0}
             style={{
               backgroundColor: colors.primaryBackground,
@@ -311,6 +312,7 @@ export default function OnboardingSetupScreen() {
           </AnimatedScreenSection>
 
           <AnimatedScreenSection
+            preset="none"
             index={1}
             style={{
               backgroundColor: colors.backgroundSecondary,
@@ -390,7 +392,7 @@ export default function OnboardingSetupScreen() {
             </TouchableOpacity>
           </AnimatedScreenSection>
 
-          <AnimatedScreenSection index={2}>
+          <AnimatedScreenSection preset="none" index={2}>
             <Button
               title="Finish Setup"
               onPress={() => finishOnboarding()}
@@ -400,7 +402,7 @@ export default function OnboardingSetupScreen() {
             />
           </AnimatedScreenSection>
 
-          <AnimatedScreenSection index={3} variant="slide" style={{ marginTop: 12 }}>
+          <AnimatedScreenSection preset="none" index={3} style={{ marginTop: 12, marginBottom: 8 }}>
             <Button
               title="Skip Budget for Now"
               onPress={() => finishOnboarding({ skipBudget: true })}

@@ -65,10 +65,12 @@ export default function BudgetSettingsScreen() {
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       await updateBudget.mutateAsync(budget);
-      setToastMessage(hasExistingBudget ? 'Budget updated successfully' : 'Budget set successfully');
+      setToastMessage(hasExistingBudget ? 'Budget updated' : 'Budget set');
       setToastType('success');
       setShowToast(true);
-      if (!hasExistingBudget) setMonthlyBudget(budget.toLocaleString('en-NG', { maximumFractionDigits: 0 }));
+      if (!hasExistingBudget) {
+        setMonthlyBudget(budget.toLocaleString('en-NG', { maximumFractionDigits: 0 }));
+      }
     } catch {
       setToastMessage('Failed to save budget. Please try again.');
       setToastType('error');
@@ -82,80 +84,79 @@ export default function BudgetSettingsScreen() {
     return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   };
 
-  const handleAmountChange = (text: string) => {
-    setMonthlyBudget(formatAmount(text));
-  };
-
   const aiInsight = summaryResponse?.data?.aiInsight;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* Header */}
       <FadeUp
-        className="flex-row items-center px-5 py-4 border-b"
-        style={{ borderBottomColor: colors.border }}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 20,
+          paddingVertical: 14,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+        }}
       >
-        <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 12, padding: 2 }}>
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text className="text-xl font-bold flex-1" style={{ color: colors.text }}>
-          Budget Settings
+        <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, flex: 1 }}>
+          Budget
         </Text>
       </FadeUp>
 
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Budget Input Card */}
         <AnimatedScreenSection
           index={0}
-          className="p-5 rounded-2xl mb-6"
-          style={{ backgroundColor: colors.primaryBackground }}
+          style={{
+            backgroundColor: colors.primaryBackground,
+            borderRadius: 20,
+            padding: 20,
+            marginBottom: 16,
+          }}
         >
-          <View className="flex-row items-center mb-4">
-            <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
-            <Text className="text-sm ml-2 flex-1" style={{ color: colors.textSecondary }}>
-              Set your monthly spending limit. On the dashboard we use it for any period you pick — e.g. 2 months and 3 days = your monthly budget × (that length). You only set it once.
-            </Text>
-          </View>
-
           {budgetLoading ? (
-            <View className="py-4 items-center">
+            <View style={{ paddingVertical: 24, alignItems: 'center' }}>
               <ActivityIndicator size="small" color={colors.primary} />
             </View>
           ) : (
             <>
-              {hasExistingBudget && (
-                <Text className="text-sm mb-2" style={{ color: colors.textSecondary }}>
-                  Current budget: ₦{Number(currentLimit).toLocaleString('en-NG')}
-                </Text>
-              )}
-              <Text className="text-base font-semibold mb-2" style={{ color: colors.text }}>
-                Monthly Budget
-              </Text>
-              <Text className="text-xs mb-4" style={{ color: colors.textTertiary }}>
-                {hasExistingBudget ? 'Update your monthly spending limit' : 'Enter your monthly spending limit'}
+              <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 16, lineHeight: 19 }}>
+                {hasExistingBudget
+                  ? `Current limit: ₦${Number(currentLimit).toLocaleString('en-NG')}`
+                  : 'Set your monthly spending limit to track budget progress.'}
               </Text>
 
               <View
-                className="flex-row items-center rounded-xl border px-4 py-3 mb-4"
                 style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  borderRadius: 14,
+                  borderWidth: 1,
                   borderColor: colors.border,
                   backgroundColor: colors.backgroundSecondary,
+                  paddingHorizontal: 14,
+                  paddingVertical: 14,
+                  marginBottom: 16,
                 }}
               >
-                <Text className="text-lg font-semibold mr-2" style={{ color: colors.text }}>
+                <Text style={{ fontSize: 18, fontWeight: '600', color: colors.text, marginRight: 8 }}>
                   ₦
                 </Text>
                 <TextInput
                   value={monthlyBudget}
-                  onChangeText={handleAmountChange}
+                  onChangeText={(text) => setMonthlyBudget(formatAmount(text))}
                   placeholder={hasExistingBudget ? String(Number(currentLimit).toLocaleString('en-NG')) : '0'}
                   placeholderTextColor={colors.textTertiary}
                   keyboardType="numeric"
-                  className="flex-1"
-                  style={{
-                    color: colors.text,
-                    fontSize: 18,
-                    lineHeight: 22,
-                    paddingVertical: 0,
-                  }}
+                  style={{ flex: 1, color: colors.text, fontSize: 18 }}
                 />
               </View>
 
@@ -164,7 +165,6 @@ export default function BudgetSettingsScreen() {
                 onPress={handleSaveBudget}
                 loading={updateBudget.isPending}
                 disabled={updateBudget.isPending}
-                className="mt-2"
               />
             </>
           )}
@@ -173,61 +173,35 @@ export default function BudgetSettingsScreen() {
         {/* AI Recommendation */}
         <AnimatedScreenSection
           index={1}
-          className="p-5 rounded-2xl mb-6"
-          style={{ backgroundColor: colors.backgroundSecondary }}
+          style={{
+            backgroundColor: colors.backgroundSecondary,
+            borderRadius: 20,
+            padding: 20,
+          }}
         >
-          <View className="flex-row items-center mb-2">
-            <Ionicons name="bulb" size={20} color={colors.primary} />
-            <Text className="text-base font-semibold ml-2" style={{ color: colors.text }}>
-              AI Recommendation
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+            <Ionicons name="bulb-outline" size={18} color={colors.primary} />
+            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, marginLeft: 8 }}>
+              SEFA Recommendation
             </Text>
           </View>
+
           {summaryLoading ? (
-            <View className="py-4 items-center">
+            <View style={{ paddingVertical: 16, alignItems: 'center' }}>
               <ActivityIndicator size="small" color={colors.primary} />
             </View>
           ) : aiInsight ? (
-            <ScrollView
-              nestedScrollEnabled
-              style={{ maxHeight: 220 }}
-              showsVerticalScrollIndicator
+            <Text
+              style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 20 }}
+              numberOfLines={5}
             >
-              <Text
-                className="text-sm leading-5"
-                style={{ color: colors.textSecondary }}
-              >
-                {aiInsight}
-              </Text>
-            </ScrollView>
+              {aiInsight}
+            </Text>
           ) : (
-            <Text className="text-sm" style={{ color: colors.textTertiary }}>
-              Add income and expenses to get personalized budget tips.
+            <Text style={{ fontSize: 13, color: colors.textTertiary }}>
+              Add income and expenses to get personalized budget recommendations.
             </Text>
           )}
-        </AnimatedScreenSection>
-
-        <AnimatedScreenSection
-          index={2}
-          className="p-5 rounded-2xl"
-          style={{ backgroundColor: colors.backgroundSecondary }}
-        >
-          <Text className="text-base font-semibold mb-2" style={{ color: colors.text }}>
-            Budget Tips
-          </Text>
-          <View className="mt-2">
-            <Text className="text-sm mb-2" style={{ color: colors.textSecondary }}>
-              • Review your past spending to set a realistic budget
-            </Text>
-            <Text className="text-sm mb-2" style={{ color: colors.textSecondary }}>
-              • Update your budget monthly based on your needs
-            </Text>
-            <Text className="text-sm mb-2" style={{ color: colors.textSecondary }}>
-              • Track your progress on the dashboard
-            </Text>
-            <Text className="text-sm" style={{ color: colors.textSecondary }}>
-              • Set aside some buffer for unexpected expenses
-            </Text>
-          </View>
         </AnimatedScreenSection>
       </ScrollView>
 

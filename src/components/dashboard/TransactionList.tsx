@@ -15,12 +15,14 @@ interface TransactionListProps {
   transactions: Transaction[];
   currency?: string;
   onViewAll?: () => void;
+  onTransactionPress?: (transaction: Transaction) => void;
 }
 
 export const TransactionList: React.FC<TransactionListProps> = ({
   transactions,
   currency = '₦',
   onViewAll,
+  onTransactionPress,
 }) => {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
@@ -113,13 +115,17 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             </View>
           ) : (
             filteredTransactions.map((transaction, index) => (
-              <AnimatedListItem
-                key={transaction.id}
-                index={index}
-                total={filteredTransactions.length}
-                group="xs"
-              >
-                <TransactionItem transaction={transaction} currency={currency} />
+                <AnimatedListItem
+                  key={transaction.id}
+                  index={index}
+                  total={filteredTransactions.length}
+                  group="xs"
+                >
+                <TransactionItem
+                  transaction={transaction}
+                  currency={currency}
+                  onPress={onTransactionPress ? () => onTransactionPress(transaction) : undefined}
+                />
               </AnimatedListItem>
             ))
           )}

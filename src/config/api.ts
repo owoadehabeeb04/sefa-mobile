@@ -126,6 +126,16 @@ export const API_ENDPOINTS = {
     SECURITY: '/bank/connections',
   },
 
+  STATEMENT_IMPORTS: {
+    BASE: '/statement-imports',
+    UPLOAD: '/statement-imports/upload',
+  },
+
+  ASSISTANT: {
+    CHATS: '/assistant/chats',
+    SEARCH: '/assistant/chats/search',
+  },
+
   // Sync operations (bank connections)
   SYNC: {
     ALL: '/sync/all',

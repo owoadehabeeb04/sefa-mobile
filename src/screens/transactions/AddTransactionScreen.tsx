@@ -20,7 +20,7 @@ import { Select } from '@/components/common/Select';
 import { Button } from '@/components/common/Button';
 import { Toast } from '@/components/common/Toast';
 import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '@/utils/secureStore';
 import { useCategories, useSyncCategories } from '@/features/categories/category.hooks';
 import { useCreateExpense, useUpdateExpense } from '@/features/expenses/expense.hooks';
 import { useCreateIncome, useUpdateIncome } from '@/features/income/income.hooks';
@@ -34,6 +34,54 @@ import type { PaymentMethod } from '@/features/expenses/expense.types';
 import type { Transaction } from '@/features/transactions/transaction.hooks';
 
 type TransactionType = 'expense' | 'income';
+
+const formatDateInputLocal = (value: Date) => {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const toLocalIsoString = (value: Date) => {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  const hours = String(value.getHours()).padStart(2, '0');
+  const minutes = String(value.getMinutes()).padStart(2, '0');
+  const seconds = String(value.getSeconds()).padStart(2, '0');
+  const millis = String(value.getMilliseconds()).padStart(3, '0');
+  const offsetMinutes = -value.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? '+' : '-';
+  const absoluteOffset = Math.abs(offsetMinutes);
+  const offsetHours = String(Math.floor(absoluteOffset / 60)).padStart(2, '0');
+  const offsetRemainder = String(absoluteOffset % 60).padStart(2, '0');
+
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${millis}${sign}${offsetHours}:${offsetRemainder}`;
+};
+
+const buildTransactionDateTime = (dateInput: string, existingDate?: string | null) => {
+  const [yearRaw, monthRaw, dayRaw] = String(dateInput || '').split('-');
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return new Date().toISOString();
+  }
+
+  const base = existingDate ? new Date(existingDate) : new Date();
+  const next = new Date(
+    year,
+    month - 1,
+    day,
+    base.getHours(),
+    base.getMinutes(),
+    base.getSeconds(),
+    base.getMilliseconds(),
+  );
+
+  return toLocalIsoString(next);
+};
 
 const getResolvedTransactionType = (
   transactionType: TransactionType,
@@ -61,7 +109,7 @@ export default function AddTransactionScreen() {
   const [categoryId, setCategoryId] = useState('');
   const [description, setDescription] = useState('');
   const [source, setSource] = useState(''); // For income
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(formatDateInputLocal(new Date()));
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [location, setLocation] = useState('');
   const [showToast, setShowToast] = useState(false);
@@ -89,7 +137,7 @@ export default function AddTransactionScreen() {
           setDescription('');
           setSource('');
           setLocation('');
-          setDate(new Date().toISOString().split('T')[0]);
+          setDate(formatDateInputLocal(new Date()));
           setPaymentMethod('cash');
           setTransactionType('expense');
 
@@ -118,7 +166,7 @@ export default function AddTransactionScreen() {
             if (transaction.date) {
               const dateObj = new Date(transaction.date);
               if (!isNaN(dateObj.getTime())) {
-                setDate(dateObj.toISOString().split('T')[0]);
+                setDate(formatDateInputLocal(dateObj));
               }
             }
             
@@ -220,7 +268,7 @@ export default function AddTransactionScreen() {
       setDescription('');
       setSource('');
       setLocation('');
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(formatDateInputLocal(new Date()));
       setPaymentMethod('cash');
       setTransactionType('expense');
       
@@ -242,7 +290,7 @@ export default function AddTransactionScreen() {
     }
 
     const numAmount = Number(amount.replace(/,/g, ''));
-    const transactionDate = new Date(date).toISOString();
+    const transactionDate = buildTransactionDateTime(date, editingTransaction?.date);
 
     try {
       if (resolvedTransactionType === 'expense') {
@@ -302,7 +350,7 @@ export default function AddTransactionScreen() {
         setDescription('');
         setSource('');
         setLocation('');
-        setDate(new Date().toISOString().split('T')[0]);
+        setDate(formatDateInputLocal(new Date()));
         setPaymentMethod('cash');
         setEditingTransaction(null);
         

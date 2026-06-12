@@ -25,11 +25,12 @@ import { DateRangePicker } from '@/components/common/DateRangePicker';
 import { Select } from '@/components/common/Select';
 import { Toast } from '@/components/common/Toast';
 import { AnimatedListItem, AnimatedScreenSection, FadeUp } from '@/src/components/motion';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '@/utils/secureStore';
 import { format } from 'date-fns';
 import { useInfiniteTransactions, useSyncTransactions, groupTransactionsByDate, type Transaction } from '@/features/transactions/transaction.hooks';
 import { useDeleteExpense } from '@/features/expenses/expense.hooks';
 import { useDeleteIncome } from '@/features/income/income.hooks';
+import { useSensitiveActionSecurity } from '@/features/security/useSensitiveActionSecurity';
 import type { TransactionFilters } from '@/features/transactions/transaction.hooks';
 
 export default function TransactionsScreen() {
@@ -81,6 +82,7 @@ export default function TransactionsScreen() {
   const syncTransactions = useSyncTransactions();
   const deleteExpense = useDeleteExpense();
   const deleteIncome = useDeleteIncome();
+  const { requireVerification } = useSensitiveActionSecurity();
 
   // Sync transactions from server on mount (for offline access)
   useEffect(() => {
@@ -207,6 +209,13 @@ export default function TransactionsScreen() {
 
   const hasActiveFilters = filters.type || filters.startDate || filters.endDate || searchQuery;
 
+  const openStatementImports = useCallback(async () => {
+    const allowed = await requireVerification('statement_import_history');
+    if (allowed) {
+      router.push('/settings/statement-import');
+    }
+  }, [requireVerification, router]);
+
   // Guard against multiple onEndReached fires (cursor pagination)
   const fetchingNextRef = useRef(false);
   const handleEndReached = useCallback(() => {
@@ -294,6 +303,21 @@ export default function TransactionsScreen() {
 
           {/* Filter Buttons */}
           <View className="flex-row gap-2">
+            <TouchableOpacity
+              onPress={openStatementImports}
+              className="flex-row items-center px-4 py-2 rounded-xl"
+              style={{ backgroundColor: colors.backgroundSecondary }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="document-attach" size={16} color={colors.textSecondary} />
+              <Text
+                className="text-sm font-medium ml-2"
+                style={{ color: colors.textSecondary }}
+              >
+                Import Statement
+              </Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               onPress={() => setShowFilters(!showFilters)}
               className="flex-row items-center px-4 py-2 rounded-xl"

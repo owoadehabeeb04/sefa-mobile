@@ -1,0 +1,309 @@
+import React, { useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+
+import { Colors } from '@/constants/theme';
+import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
+import { Button } from '@/src/components/common/Button';
+import { Toast } from '@/src/components/common/Toast';
+import { useDeleteStatementImport, useStatementImport } from '@/features/statements/statement.hooks';
+
+const STATUS_STEPS = [
+  'Reading your statement',
+  'Extracting transactions',
+  'Checking accuracy',
+  'Preparing preview',
+];
+
+const getImportFailureContent = (errorMessage?: string | null) => {
+  const safeMessage = String(errorMessage || '').trim();
+
+  if (/no longer available on the server/i.test(safeMessage)) {
+    return {
+      title: 'This upload expired before processing finished',
+      body: safeMessage,
+      tips: [
+        'Upload the statement again.',
+        'Stay on the import screen until the preview finishes.',
+        'If it happens again, try a smaller file.',
+      ],
+    };
+  }
+
+  if (/image scan/i.test(safeMessage) || /blurry/i.test(safeMessage) || /cropped/i.test(safeMessage)) {
+    return {
+      title: 'This statement image is hard to read',
+      body: safeMessage,
+      tips: [
+        'Use a brighter, flatter photo.',
+        'Make sure the full transaction table is visible.',
+        'Avoid shadows, blur, and cropped edges.',
+      ],
+    };
+  }
+
+  if (/pdf statement/i.test(safeMessage) || /transaction table/i.test(safeMessage)) {
+    return {
+      title: 'This PDF does not have enough readable statement data',
+      body: safeMessage,
+      tips: [
+        'Upload the real bank statement, not another PDF document.',
+        'Use a cleaner PDF export if your bank provides one.',
+        'Make sure dates, descriptions, and amounts are visible.',
+      ],
+    };
+  }
+
+  if (/spreadsheet/i.test(safeMessage) || /excel/i.test(safeMessage) || /csv/i.test(safeMessage)) {
+    return {
+      title: 'This spreadsheet statement could not be parsed',
+      body: safeMessage,
+      tips: [
+        'Check that the file contains transaction rows.',
+        'Keep the date, description, and amount columns visible.',
+        'Try exporting the statement again from your bank.',
+      ],
+    };
+  }
+
+  return {
+    title: 'We could not read this statement',
+    body: safeMessage || 'We could not prepare a preview for this statement. Try uploading a clearer bank statement file.',
+    tips: [
+      'Try a clearer statement file.',
+      'Make sure it shows real transaction rows.',
+      'Upload again after checking the file format.',
+    ],
+  };
+};
+
+const StatCard = ({ label, value, tone }: { label: string; value: number; tone: string }) => {
+  const colors = Colors.light;
+  return (
+    <View
+      style={{
+        flex: 1,
+        minWidth: '47%',
+        backgroundColor: `${tone}15`,
+        borderRadius: 18,
+        padding: 16,
+      }}
+    >
+      <Text style={{ color: tone, fontSize: 12, marginBottom: 6 }}>{label}</Text>
+      <Text style={{ color: colors.text, fontSize: 22, fontWeight: '700' }}>{value}</Text>
+    </View>
+  );
+};
+
+export default function StatementImportDetailsScreen() {
+  const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const colors = Colors.light;
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
+
+  const { data: statementImport, isLoading } = useStatementImport(id);
+  const deleteImport = useDeleteStatementImport();
+
+  const handleCancel = () => {
+    if (!statementImport) return;
+
+    Alert.alert('Cancel Import', 'This will remove the preview rows for this statement import.', [
+      { text: 'Keep Import', style: 'cancel' },
+      {
+        text: 'Cancel Import',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteImport.mutateAsync(statementImport.id);
+            router.replace('/settings/statement-import');
+          } catch (error: any) {
+            setToastMessage(error?.message || 'Failed to cancel statement import');
+            setToastType('error');
+            setToastVisible(true);
+          }
+        },
+      },
+    ]);
+  };
+
+  if (isLoading || !statementImport) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="small" color={colors.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  const isProcessing = statementImport.isProcessing;
+  const isImported = statementImport.status === 'imported';
+  const hasOnlyDuplicates =
+    !isImported
+    && statementImport.totalRows > 0
+    && statementImport.duplicateRows === statementImport.totalRows;
+  const failureContent = getImportFailureContent(statementImport.errorMessage);
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <Toast
+        visible={toastVisible}
+        message={toastMessage}
+        type={toastType}
+        onHide={() => setToastVisible(false)}
+      />
+
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
+        <FadeUp style={{ marginBottom: 20 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+            <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 12 }}>
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={{ color: colors.text, fontSize: 22, fontWeight: '700', flex: 1 }} numberOfLines={1}>
+              {statementImport.fileName}
+            </Text>
+          </View>
+          <Text style={{ color: colors.textSecondary }}>
+            {statementImport.bankName || 'Manual statement import'}
+          </Text>
+        </FadeUp>
+
+        {isProcessing ? (
+          <AnimatedScreenSection
+            index={0}
+            style={{
+              backgroundColor: colors.primaryBackground,
+              borderRadius: 24,
+              padding: 20,
+            }}
+          >
+            <Text style={{ color: colors.text, fontSize: 20, fontWeight: '700', marginBottom: 8 }}>
+              Reading your statement
+            </Text>
+            <Text style={{ color: colors.textSecondary, lineHeight: 22, marginBottom: 18 }}>
+              SEFA is extracting transactions, checking accuracy, and preparing your preview.
+            </Text>
+
+            {STATUS_STEPS.map((step, index) => (
+              <View key={step} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: index === STATUS_STEPS.length - 1 ? 0 : 14 }}>
+                <View
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    backgroundColor: index < 2 ? colors.primary : colors.background,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 12,
+                  }}
+                >
+                  {index < 2 ? (
+                    <Ionicons name="checkmark" size={14} color={colors.textInverse} />
+                  ) : (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  )}
+                </View>
+                <Text style={{ color: colors.textSecondary }}>{step}</Text>
+              </View>
+            ))}
+          </AnimatedScreenSection>
+        ) : statementImport.status === 'failed' ? (
+          <AnimatedScreenSection
+            index={0}
+            style={{
+              backgroundColor: `${colors.error}10`,
+              borderRadius: 24,
+              padding: 20,
+            }}
+          >
+            <Text style={{ color: colors.error, fontSize: 20, fontWeight: '700', marginBottom: 10 }}>
+              {failureContent.title}
+            </Text>
+            <Text style={{ color: colors.textSecondary, lineHeight: 22, marginBottom: 18 }}>
+              {failureContent.body}
+            </Text>
+            <View style={{ gap: 10, marginBottom: 18 }}>
+              {failureContent.tips.map((tip) => (
+                <View key={tip} style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                  <Ionicons name="information-circle-outline" size={18} color={colors.error} style={{ marginTop: 2, marginRight: 10 }} />
+                  <Text style={{ color: colors.textSecondary, flex: 1, lineHeight: 22 }}>
+                    {tip}
+                  </Text>
+                </View>
+              ))}
+            </View>
+            <Button title="Back to Imports" onPress={() => router.replace('/settings/statement-import')} fullWidth />
+          </AnimatedScreenSection>
+        ) : (
+          <>
+            <AnimatedScreenSection index={0}>
+              <View
+                style={{
+                  backgroundColor: colors.backgroundSecondary,
+                  borderRadius: 24,
+                  padding: 20,
+                  marginBottom: 16,
+                }}
+              >
+                <Text style={{ color: colors.text, fontSize: 20, fontWeight: '700', marginBottom: 8 }}>
+                  {isImported ? 'Import complete' : 'Statement scanned successfully'}
+                </Text>
+                <Text style={{ color: colors.textSecondary, lineHeight: 22 }}>
+                  {isImported
+                    ? 'Your approved transactions are now part of your SEFA records.'
+                    : hasOnlyDuplicates
+                      ? 'All transactions in this statement may already exist in SEFA.'
+                      : 'Review the summary before deciding what to import.'}
+                </Text>
+              </View>
+            </AnimatedScreenSection>
+
+            <AnimatedScreenSection index={1}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+                <StatCard label="Total transactions found" value={statementImport.totalRows} tone={colors.info} />
+                <StatCard label="Ready to import" value={statementImport.readyRows} tone={colors.success} />
+                <StatCard label="Needs review" value={statementImport.needsReviewRows} tone={colors.warning} />
+                <StatCard label="Possible duplicates" value={statementImport.duplicateRows} tone={colors.error} />
+              </View>
+            </AnimatedScreenSection>
+
+            {!isImported ? (
+              <AnimatedScreenSection index={2}>
+                <Button
+                  title="Review Transactions"
+                  onPress={() => router.push(`/settings/statement-import/${statementImport.id}/rows` as any)}
+                  fullWidth
+                />
+                <Button
+                  title="Cancel Import"
+                  onPress={handleCancel}
+                  variant="outline"
+                  fullWidth
+                  className="mt-3"
+                  loading={deleteImport.isPending}
+                />
+              </AnimatedScreenSection>
+            ) : (
+              <AnimatedScreenSection index={2}>
+                <Button
+                  title="View Transactions"
+                  onPress={() => router.replace('/(tabs)/transactions')}
+                  fullWidth
+                />
+                <Button
+                  title="Back to Dashboard"
+                  onPress={() => router.replace('/(tabs)')}
+                  variant="outline"
+                  fullWidth
+                  className="mt-3"
+                />
+              </AnimatedScreenSection>
+            )}
+          </>
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}

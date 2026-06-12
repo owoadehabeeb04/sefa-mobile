@@ -18,6 +18,56 @@ import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 
 const colors = Colors.light;
 
+const PasswordField = ({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  visible,
+  onToggle,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (v: string) => void;
+  placeholder: string;
+  visible: boolean;
+  onToggle: () => void;
+}) => (
+  <View style={{ marginBottom: 16 }}>
+    <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text, marginBottom: 8 }}>
+      {label}
+    </Text>
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: colors.backgroundSecondary,
+        paddingHorizontal: 14,
+        paddingVertical: 14,
+      }}
+    >
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={colors.textTertiary}
+        secureTextEntry={!visible}
+        style={{ flex: 1, color: colors.text, fontSize: 15 }}
+      />
+      <TouchableOpacity onPress={onToggle} style={{ padding: 4 }}>
+        <Ionicons
+          name={visible ? 'eye-off-outline' : 'eye-outline'}
+          size={20}
+          color={colors.textTertiary}
+        />
+      </TouchableOpacity>
+    </View>
+  </View>
+);
+
 export default function ChangePasswordScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
@@ -34,109 +84,76 @@ export default function ChangePasswordScreen() {
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
   const validatePassword = (password: string): string | null => {
-    if (password.length < 8) {
-      return 'Password must be at least 8 characters';
-    }
-    if (!/[A-Z]/.test(password)) {
-      return 'Password must contain at least one uppercase letter';
-    }
-    if (!/[a-z]/.test(password)) {
-      return 'Password must contain at least one lowercase letter';
-    }
-    if (!/[0-9]/.test(password)) {
-      return 'Password must contain at least one number';
-    }
+    if (password.length < 8) return 'Password must be at least 8 characters';
+    if (!/[A-Z]/.test(password)) return 'Password must contain an uppercase letter';
+    if (!/[a-z]/.test(password)) return 'Password must contain a lowercase letter';
+    if (!/[0-9]/.test(password)) return 'Password must contain a number';
     return null;
+  };
+
+  const showError = (msg: string) => {
+    setToastMessage(msg);
+    setToastType('error');
+    setShowToast(true);
   };
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setToastMessage('Please fill in all fields');
-      setToastType('error');
-      setShowToast(true);
+      showError('Please fill in all fields');
       return;
     }
-
     if (newPassword !== confirmPassword) {
-      setToastMessage('New passwords do not match');
-      setToastType('error');
-      setShowToast(true);
+      showError('New passwords do not match');
       return;
     }
-
     const validationError = validatePassword(newPassword);
     if (validationError) {
-      setToastMessage(validationError);
-      setToastType('error');
-      setShowToast(true);
+      showError(validationError);
       return;
     }
 
     const verified = await requireVerification('change_password');
-    if (!verified) {
-      return;
-    }
+    if (!verified) return;
 
     setIsLoading(true);
     try {
-      // First verify current password by attempting login
       try {
-        await api.post(API_ENDPOINTS.AUTH.LOGIN, {
-          email: user?.email,
-          password: currentPassword,
-        });
+        await api.post(API_ENDPOINTS.AUTH.LOGIN, { email: user?.email, password: currentPassword });
       } catch {
-        setToastMessage('Current password is incorrect');
-        setToastType('error');
-        setShowToast(true);
+        showError('Current password is incorrect');
         setIsLoading(false);
         return;
       }
 
-      // Use forgot password flow to reset password
-      // Step 1: Request OTP
-      await api.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, {
-        email: user?.email,
-      });
+      await api.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, { email: user?.email });
 
-      // Show alert to enter OTP
       Alert.prompt(
         'Enter OTP',
-        'We sent an OTP to your email. Please enter it to confirm password change.',
+        `We sent a 6-digit code to ${user?.email}`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
             text: 'Confirm',
             onPress: async (otp: any) => {
               if (!otp || otp.length !== 6) {
-                setToastMessage('Please enter a valid 6-digit OTP');
-                setToastType('error');
-                setShowToast(true);
+                showError('Please enter a valid 6-digit OTP');
                 return;
               }
-
               try {
-                // Step 2: Reset password with OTP
                 await api.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, {
                   email: user?.email,
                   otp: otp.trim(),
-                  newPassword: newPassword,
+                  newPassword,
                 });
-
                 setToastMessage('Password changed successfully');
                 setToastType('success');
                 setShowToast(true);
                 setCurrentPassword('');
                 setNewPassword('');
                 setConfirmPassword('');
-                
-                setTimeout(() => {
-                  router.back();
-                }, 1500);
+                setTimeout(() => router.back(), 1500);
               } catch (error: any) {
-                setToastMessage(error?.response?.data?.message || 'Failed to change password');
-                setToastType('error');
-                setShowToast(true);
+                showError(error?.response?.data?.message || 'Failed to change password');
               }
             },
           },
@@ -144,9 +161,7 @@ export default function ChangePasswordScreen() {
         'plain-text'
       );
     } catch (error: any) {
-      setToastMessage(error?.response?.data?.message || 'Failed to change password');
-      setToastType('error');
-      setShowToast(true);
+      showError(error?.response?.data?.message || 'Failed to change password');
     } finally {
       setIsLoading(false);
     }
@@ -156,160 +171,66 @@ export default function ChangePasswordScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
       <FadeUp
-        className="flex-row items-center px-5 py-4 border-b"
-        style={{ borderBottomColor: colors.border }}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 20,
+          paddingVertical: 14,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+        }}
       >
-        <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 12, padding: 2 }}>
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text className="text-xl font-bold flex-1" style={{ color: colors.text }}>
+        <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, flex: 1 }}>
           Change Password
         </Text>
       </FadeUp>
 
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }}>
-        <AnimatedScreenSection
-          index={0}
-          className="p-5 rounded-2xl mb-6"
-          style={{ backgroundColor: colors.primaryBackground }}
-        >
-          <View className="flex-row items-center mb-4">
-            <Ionicons name="lock-closed-outline" size={20} color={colors.primary} />
-            <Text className="text-sm ml-2 flex-1" style={{ color: colors.textSecondary }}>
-              For security, you&apos;ll need to verify your identity with an OTP sent to your email.
-            </Text>
-          </View>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <AnimatedScreenSection index={0} style={{ marginBottom: 8 }}>
+          <PasswordField
+            label="Current Password"
+            value={currentPassword}
+            onChangeText={setCurrentPassword}
+            placeholder="Enter current password"
+            visible={showCurrentPassword}
+            onToggle={() => setShowCurrentPassword(!showCurrentPassword)}
+          />
         </AnimatedScreenSection>
 
-        <AnimatedScreenSection index={1}>
-        <View className="mb-4">
-          <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
-            Current Password
+        <AnimatedScreenSection index={1} style={{ marginBottom: 4 }}>
+          <PasswordField
+            label="New Password"
+            value={newPassword}
+            onChangeText={setNewPassword}
+            placeholder="Enter new password"
+            visible={showNewPassword}
+            onToggle={() => setShowNewPassword(!showNewPassword)}
+          />
+          <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: -8, marginBottom: 16 }}>
+            Min. 8 characters with uppercase, lowercase and number
           </Text>
-          <View
-            className="flex-row items-center rounded-xl border px-4"
-            style={{
-              borderColor: colors.border,
-              backgroundColor: colors.backgroundSecondary,
-            }}
-          >
-            <TextInput
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              placeholder="Enter current password"
-              placeholderTextColor={colors.textTertiary}
-              secureTextEntry={!showCurrentPassword}
-              className="flex-1"
-              style={{
-                color: colors.text,
-                fontSize: 15,
-                lineHeight: 20,
-                paddingVertical: 0,
-              }}
-            />
-            <TouchableOpacity
-              onPress={() => setShowCurrentPassword(!showCurrentPassword)}
-              className="p-2"
-            >
-              <Ionicons
-                name={showCurrentPassword ? 'eye-off-outline' : 'eye-outline'}
-                size={20}
-                color={colors.textTertiary}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
         </AnimatedScreenSection>
 
-        <AnimatedScreenSection index={2}>
-        <View className="mb-4">
-          <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
-            New Password
-          </Text>
-          <View
-            className="flex-row items-center rounded-xl border px-4"
-            style={{
-              borderColor: colors.border,
-              backgroundColor: colors.backgroundSecondary,
-            }}
-          >
-            <TextInput
-              value={newPassword}
-              onChangeText={setNewPassword}
-              placeholder="Enter new password"
-              placeholderTextColor={colors.textTertiary}
-              secureTextEntry={!showNewPassword}
-              className="flex-1"
-              style={{
-                color: colors.text,
-                fontSize: 15,
-                lineHeight: 20,
-                paddingVertical: 0,
-              }}
-            />
-            <TouchableOpacity
-              onPress={() => setShowNewPassword(!showNewPassword)}
-              className="p-2"
-            >
-              <Ionicons
-                name={showNewPassword ? 'eye-off-outline' : 'eye-outline'}
-                size={20}
-                color={colors.textTertiary}
-              />
-            </TouchableOpacity>
-          </View>
-          <Text className="text-xs mt-1" style={{ color: colors.textTertiary }}>
-            Must be at least 8 characters with uppercase, lowercase, and number
-          </Text>
-        </View>
+        <AnimatedScreenSection index={2} style={{ marginBottom: 24 }}>
+          <PasswordField
+            label="Confirm New Password"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholder="Re-enter new password"
+            visible={showConfirmPassword}
+            onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
+          />
         </AnimatedScreenSection>
 
         <AnimatedScreenSection index={3}>
-        <View className="mb-6">
-          <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
-            Confirm New Password
-          </Text>
-          <View
-            className="flex-row items-center rounded-xl border px-4"
-            style={{
-              borderColor: colors.border,
-              backgroundColor: colors.backgroundSecondary,
-            }}
-          >
-            <TextInput
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="Confirm new password"
-              placeholderTextColor={colors.textTertiary}
-              secureTextEntry={!showConfirmPassword}
-              className="flex-1"
-              style={{
-                color: colors.text,
-                fontSize: 15,
-                lineHeight: 20,
-                paddingVertical: 0,
-              }}
-            />
-            <TouchableOpacity
-              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="p-2"
-            >
-              <Ionicons
-                name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
-                size={20}
-                color={colors.textTertiary}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-        </AnimatedScreenSection>
-
-        <AnimatedScreenSection index={4}>
-          <Button
-            title="Change Password"
-            onPress={handleChangePassword}
-            loading={isLoading}
-          />
+          <Button title="Change Password" onPress={handleChangePassword} loading={isLoading} />
         </AnimatedScreenSection>
       </ScrollView>
 

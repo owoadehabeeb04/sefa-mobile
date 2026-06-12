@@ -5,7 +5,7 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import TransactionDetailsScreen from '@/screens/transactions/TransactionDetailsScreen';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '@/utils/secureStore';
 import type { Transaction } from '@/features/transactions/transaction.hooks';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { Colors } from '@/constants/theme';

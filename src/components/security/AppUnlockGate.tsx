@@ -22,7 +22,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { Button } from '@/src/components/common/Button';
 import { PinCodeInput } from './PinCodeInput';
 
-const UNPROTECTED_SEGMENTS = new Set(['(auth)', '(welcome)', 'splash']);
+const UNPROTECTED_SEGMENTS = new Set(['(auth)', '(welcome)', '(onboarding)', 'splash']);
 
 const getStepUpCopy = (action?: string) => {
   switch (action) {
@@ -40,6 +40,11 @@ const getStepUpCopy = (action?: string) => {
       return {
         title: 'Confirm it’s you',
         subtitle: 'Unlock with biometrics or your PIN before changing your password.',
+      };
+    case 'assistant_history':
+      return {
+        title: 'Confirm it’s you',
+        subtitle: 'Unlock with biometrics or your PIN before opening SEFA Assistant.',
       };
     default:
       return {

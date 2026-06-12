@@ -3,10 +3,11 @@
  */
 
 import React, { useState } from 'react';
-import { Alert, View, Text, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as SecureStore from '@/utils/secureStore';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth.store';
@@ -21,6 +22,8 @@ import { TransactionList } from '@/components/dashboard/TransactionList';
 import { DateRangePicker } from '@/components/common/DateRangePicker';
 import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 import { format } from 'date-fns';
+import type { Transaction } from '@/types/dashboard.types';
+import type { Transaction as DetailTransaction } from '@/features/transactions/transaction.hooks';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -77,6 +80,36 @@ export default function DashboardScreen() {
 
   const dashboardData = data?.data;
   const currency = dashboardData?.summary.currency === 'NGN' ? '₦' : dashboardData?.summary.currency || '₦';
+
+  const handleTransactionPress = async (transaction: Transaction) => {
+    try {
+      const normalizedTransaction: DetailTransaction = {
+        id: transaction.id,
+        userId: '',
+        categoryId: transaction.id,
+        amount: transaction.amount,
+        description: transaction.description,
+        date: transaction.date,
+        type: transaction.type,
+        paymentMethod: 'bank_transfer',
+        isPending: false,
+        synced: true,
+        createdAt: transaction.createdAt,
+        category: {
+          id: transaction.id,
+          name: transaction.category,
+          icon: transaction.icon || (transaction.type === 'expense' ? 'remove-circle' : 'add-circle'),
+          color: transaction.color || (transaction.type === 'expense' ? colors.error : colors.success),
+          type: transaction.type,
+        },
+      };
+
+      await SecureStore.setItemAsync('transactionDetails', JSON.stringify(normalizedTransaction));
+      router.push(`/transactions/${transaction.id}`);
+    } catch (error) {
+      console.error('Error opening transaction details from dashboard:', error);
+    }
+  };
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.background }}>
@@ -243,9 +276,14 @@ export default function DashboardScreen() {
         {/* Add Expense Button */}
         <AnimatedScreenSection index={3}>
           <TouchableOpacity
-            onPress={() => {
-              // TODO: Navigate to add expense screen
-              Alert.alert('Coming Soon', 'Add expense feature will be available soon!');
+            onPress={async () => {
+              try {
+                await SecureStore.deleteItemAsync('editingTransaction');
+              } catch (error) {
+                console.warn('Failed to clear editing state before opening add expense screen:', error);
+              }
+
+              router.push('/(tabs)/add');
             }}
             className="flex-row items-center justify-center py-4 rounded-2xl mb-6"
             style={{ backgroundColor: colors.primary }}
@@ -284,6 +322,7 @@ export default function DashboardScreen() {
             <TransactionList
               transactions={dashboardData?.recentTransactions || []}
               currency={currency}
+              onTransactionPress={handleTransactionPress}
               onViewAll={() => {
                 const start = dashboardData?.period?.start ?? startDate;
                 const end = dashboardData?.period?.end ?? endDate;

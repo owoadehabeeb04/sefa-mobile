@@ -124,7 +124,7 @@ export default function ResetPasswordScreen() {
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View className="flex-1">
         {/* Logo Header */}
-        <ScaleIn style={{ paddingHorizontal: 24, paddingTop: 48, paddingBottom: 16 }}>
+        <ScaleIn preset="none" style={{ paddingHorizontal: 24, paddingTop: 48, paddingBottom: 16 }}>
           <View className="flex-row items-center justify-between">
             {/* Back Button + Logo + SEFA Text */}
             <View className="flex-row items-center">
@@ -239,7 +239,7 @@ export default function ResetPasswordScreen() {
       </ScaleIn>
 
       <View className="flex-1 px-6 pt-8">
-        <FadeUp style={{ marginBottom: 32 }}>
+        <FadeUp preset="none" style={{ marginBottom: 32 }}>
           <Text
             className="text-3xl font-bold mb-2"
             style={{ color: colors.text }}
@@ -254,7 +254,7 @@ export default function ResetPasswordScreen() {
           </Text>
         </FadeUp>
 
-        <AnimatedScreenSection index={0}>
+        <AnimatedScreenSection preset="none" index={0}>
           <PasswordInput
             label="New Password"
             value={password}
@@ -264,7 +264,7 @@ export default function ResetPasswordScreen() {
           />
         </AnimatedScreenSection>
 
-        <AnimatedScreenSection index={1}>
+        <AnimatedScreenSection preset="none" index={1}>
           <PasswordInput
             label="Confirm Password"
             value={confirmPassword}
@@ -274,7 +274,7 @@ export default function ResetPasswordScreen() {
           />
         </AnimatedScreenSection>
 
-        <AnimatedScreenSection index={2} style={{ marginTop: 16 }}>
+        <AnimatedScreenSection preset="none" index={2} style={{ marginTop: 16 }}>
           <Button
             title="Reset Password"
             onPress={handleResetPassword}

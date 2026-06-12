@@ -3,7 +3,7 @@
  */
 
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig, isAxiosError } from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '@/utils/secureStore';
 import { API_CONFIG, API_BASE_URL_CANDIDATES } from '../config/api';
 
 const GENERIC_ERROR_MESSAGE = 'An error occurred';

@@ -3,7 +3,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, Text, TouchableOpacity, View } from 'react-native';
+import { AccessibilityInfo,  Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { OTPInput } from '@/src/components/common/OTPInput';
@@ -157,10 +157,9 @@ export const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({
 
   return (
     <View
-      className="flex-1 px-6 pt-8"
-      style={{ backgroundColor: colors.background }}
+      style={{ flex: 1, paddingHorizontal: 24, paddingTop: 32, backgroundColor: colors.background }}
     >
-      <FadeUp style={{ marginBottom: 32 }}>
+      <FadeUp preset="none" style={{ marginBottom: 32 }}>
         <Text
           className="text-3xl font-bold mb-2"
           style={{ color: colors.text }}

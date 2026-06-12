@@ -1,7 +1,7 @@
 /**
  * Splash Screen - First screen on app launch
  * Handles authentication and onboarding routing
- * Shows logo for at least 10 seconds before navigating
+ * Shows logo briefly before navigating
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -16,7 +16,7 @@ import { useOnboardingStatus } from '@/features/onboarding/onboarding.hooks';
 import { resolveAuthenticatedRoute } from '@/features/auth/auth-routing';
 import { sefaLogoSvg } from '@/assets/illustrations';
 
-const MIN_SPLASH_DURATION_MS = 10000; // 10 seconds minimum
+const MIN_SPLASH_DURATION_MS = 1800; // brief minimum so launch feels responsive
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -66,7 +66,7 @@ export default function SplashScreen() {
     }
   }, [isError, isAuthenticated, clearAuth]);
 
-  // Navigate only after auth/user are ready AND at least 10 seconds have passed
+  // Navigate only after auth/user are ready AND the brief splash window has passed
   useEffect(() => {
     if (authLoading || userLoading || onboardingLoading) return;
 

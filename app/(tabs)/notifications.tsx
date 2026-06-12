@@ -193,7 +193,7 @@ console.log('All notifications:', allNotifications);
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
       <FadeUp
         className="flex-row items-center justify-between px-5 py-4 border-b"

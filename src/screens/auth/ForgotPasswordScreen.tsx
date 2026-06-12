@@ -77,7 +77,7 @@ export default function ForgotPasswordScreen() {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View className="flex-1">
       {/* Logo Header */}
-      <ScaleIn style={{ paddingHorizontal: 24, paddingTop: 48, paddingBottom: 16 }}>
+      <ScaleIn preset="none" style={{ paddingHorizontal: 24, paddingTop: 48, paddingBottom: 16 }}>
         <View className="flex-row items-center justify-between">
           {/* Back Button + Logo + SEFA Text */}
           <View className="flex-row items-center">
@@ -118,7 +118,7 @@ export default function ForgotPasswordScreen() {
 
       <View className="flex-1 px-6 pt-8">
         {/* Header */}
-        <FadeUp style={{ marginBottom: 32 }}>
+        <FadeUp preset="none" style={{ marginBottom: 32 }}>
           <Text
             className="text-3xl font-bold mb-2"
             style={{ color: colors.text }}
@@ -134,7 +134,7 @@ export default function ForgotPasswordScreen() {
         </FadeUp>
 
         {/* Form */}
-        <AnimatedScreenSection index={0}>
+        <AnimatedScreenSection preset="none" index={0}>
           <Input
             label="Your email"
             value={email}
@@ -146,7 +146,7 @@ export default function ForgotPasswordScreen() {
           />
         </AnimatedScreenSection>
 
-        <AnimatedScreenSection index={1} style={{ marginTop: 16 }}>
+        <AnimatedScreenSection preset="none" index={1} style={{ marginTop: 16 }}>
           <Button
             title="Continue"
             onPress={handleSendOTP}
@@ -157,7 +157,7 @@ export default function ForgotPasswordScreen() {
         </AnimatedScreenSection>
 
         {/* Back to Sign In */}
-        <AnimatedScreenSection index={2} variant="slide" style={{ alignItems: 'center', marginTop: 24 }}>
+        <AnimatedScreenSection preset="none" index={2} variant="slide" style={{ alignItems: 'center', marginTop: 24 }}>
           <TouchableOpacity
             onPress={() => router.back()}
             className="self-center"

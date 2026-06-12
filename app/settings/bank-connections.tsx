@@ -2,7 +2,7 @@
  * Bank Connections Screen
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -15,11 +15,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { Colors } from '@/constants/theme';
 import { Toast } from '@/components/common/Toast';
 import { MonoConnectWidget } from '@/components/bank/MonoConnectWidget';
 import { BankConnectionCard } from '@/components/bank/BankConnectionCard';
 import {
+  BANK_CONNECTIONS_QUERY_KEY,
   isConnectionSyncActive,
   useBankConnections,
   useConnectBank,
@@ -35,6 +37,7 @@ import { AnimatedListItem, AnimatedScreenSection, FadeUp } from '@/src/component
 export default function BankConnectionsScreen() {
   const colors = Colors.light;
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const { requireVerification } = useSensitiveActionSecurity();
 
@@ -48,10 +51,36 @@ export default function BankConnectionsScreen() {
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
+  const [pendingMonoConnectionId, setPendingMonoConnectionId] = useState<string | null>(null);
+  const [isReturningFromMono, setIsReturningFromMono] = useState(false);
+
+  const hasPendingMonoConnection = useMemo(
+    () =>
+      Boolean(
+        pendingMonoConnectionId &&
+          (connections ?? []).some((c) => c.id === pendingMonoConnectionId),
+      ),
+    [connections, pendingMonoConnectionId],
+  );
+
+  useEffect(() => {
+    if (!hasPendingMonoConnection) return;
+    setIsReturningFromMono(false);
+    setPendingMonoConnectionId(null);
+  }, [hasPendingMonoConnection]);
+
+  useEffect(() => {
+    if (!isReturningFromMono || !pendingMonoConnectionId) return;
+    const timeout = setTimeout(() => {
+      setIsReturningFromMono(false);
+      setPendingMonoConnectionId(null);
+    }, 15000);
+    return () => clearTimeout(timeout);
+  }, [isReturningFromMono, pendingMonoConnectionId]);
 
   const openMonoWidget = () => {
     if (!user?.id) {
-      setToastMessage('Unable to connect bank right now. Please log out and log in again.');
+      setToastMessage('Unable to connect bank right now. Please log out and back in.');
       setToastType('error');
       setShowToast(true);
       return;
@@ -59,25 +88,20 @@ export default function BankConnectionsScreen() {
 
     const monoPublicKey = (process.env.EXPO_PUBLIC_MONO_PUBLIC_KEY || '').trim();
     if (!monoPublicKey) {
-      setToastMessage('Mono key missing in mobile env. Add EXPO_PUBLIC_MONO_PUBLIC_KEY and restart Expo.');
+      setToastMessage('Mono key missing. Add EXPO_PUBLIC_MONO_PUBLIC_KEY and restart Expo.');
       setToastType('error');
       setShowToast(true);
       return;
     }
 
     requireVerification('connect_bank').then((allowed) => {
-      if (!allowed) {
-        return;
-      }
+      if (!allowed) return;
       Alert.alert(
         'Read-only connection',
-        'SEFA can read account details and transaction history for budgeting, but it cannot transfer, withdraw, or move your money. Your bank login is handled by Mono, not entered into SEFA.',
+        'SEFA reads your transactions for budgeting. It cannot transfer or move money.',
         [
           { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Continue',
-            onPress: () => setShowMono(true),
-          },
+          { text: 'Continue', onPress: () => setShowMono(true) },
         ],
       );
     });
@@ -85,12 +109,18 @@ export default function BankConnectionsScreen() {
 
   const handleMonoSuccess = async (code: string) => {
     setShowMono(false);
+    setIsReturningFromMono(true);
     try {
-      await connectBank.mutateAsync(code);
-      setToastMessage('Bank connected. Initial sync queued in the background.');
+      const connection = await connectBank.mutateAsync(code);
+      setPendingMonoConnectionId(connection.id);
+      queryClient.invalidateQueries({ queryKey: BANK_CONNECTIONS_QUERY_KEY });
+      await refetch();
+      setToastMessage('Bank connected. Sync queued in the background.');
       setToastType('success');
       setShowToast(true);
     } catch (error: any) {
+      setIsReturningFromMono(false);
+      setPendingMonoConnectionId(null);
       setToastMessage(error?.message || 'Failed to connect bank');
       setToastType('error');
       setShowToast(true);
@@ -103,19 +133,19 @@ export default function BankConnectionsScreen() {
       await refetch();
       setToastMessage(
         response?.data?.status === 'syncing'
-          ? 'This account is already syncing in the background.'
-          : (response?.message || 'Sync queued. It continues in the background.'),
+          ? 'Already syncing in the background.'
+          : (response?.message || 'Sync queued.'),
       );
       setToastType('success');
       setShowToast(true);
     } catch (error: any) {
       const message = String(error?.message || '');
-      const isAlreadySyncing = message.includes('409') || message.toLowerCase().includes('already in progress');
-
+      const isAlreadySyncing =
+        message.includes('409') || message.toLowerCase().includes('already in progress');
       setToastMessage(
         isAlreadySyncing
-          ? 'This account is already syncing in the background.'
-          : (error?.message || 'Failed to sync connection')
+          ? 'Already syncing in the background.'
+          : (error?.message || 'Failed to sync'),
       );
       setToastType(isAlreadySyncing ? 'success' : 'error');
       setShowToast(true);
@@ -132,12 +162,9 @@ export default function BankConnectionsScreen() {
           text: 'Disconnect',
           style: 'destructive',
           onPress: async () => {
+            const allowed = await requireVerification('disconnect_bank');
+            if (!allowed) return;
             try {
-              const allowed = await requireVerification('disconnect_bank');
-              if (!allowed) {
-                return;
-              }
-
               await disconnectBank.mutateAsync(connection.id);
               setToastMessage('Bank disconnected');
               setToastType('success');
@@ -168,7 +195,9 @@ export default function BankConnectionsScreen() {
 
   const isSyncingConnection = (connectionId: string) =>
     (syncConnection.isPending && syncConnection.variables === connectionId) ||
-    (connections ?? []).some((connection) => connection.id === connectionId && isConnectionSyncActive(connection));
+    (connections ?? []).some(
+      (c) => c.id === connectionId && isConnectionSyncActive(c),
+    );
 
   const isUpdatingConnection = (connectionId: string) =>
     updateSettings.isPending && updateSettings.variables?.connectionId === connectionId;
@@ -177,41 +206,56 @@ export default function BankConnectionsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* Header */}
       <FadeUp
-        className="flex-row items-center px-5 py-4 border-b"
-        style={{ borderBottomColor: colors.border }}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 20,
+          paddingVertical: 14,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+        }}
       >
-        <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 12, padding: 2 }}>
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text className="text-xl font-bold flex-1" style={{ color: colors.text }}>
+        <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, flex: 1 }}>
           Bank Connections
         </Text>
-        <View className="flex-row items-center">
-          <TouchableOpacity
-            onPress={() => router.push('/settings/sync-history')}
-            className="px-3 py-1 rounded-full mr-2"
-            style={{ backgroundColor: colors.backgroundSecondary }}
-          >
-            <Text className="text-xs font-semibold" style={{ color: colors.textSecondary }}>
-              Activity
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={openMonoWidget}
-            className="px-3 py-1 rounded-full"
-            style={{ backgroundColor: colors.primary }}
-          >
-            <Text className="text-xs font-semibold" style={{ color: colors.textInverse }}>
-              Connect
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          onPress={() => router.push('/settings/sync-history')}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: colors.backgroundSecondary,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 8,
+          }}
+        >
+          <Ionicons name="time-outline" size={18} color={colors.textSecondary} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={openMonoWidget}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: colors.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="add" size={20} color="#FFFFFF" />
+        </TouchableOpacity>
       </FadeUp>
 
       <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ padding: 20, paddingBottom: 30 }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -221,53 +265,64 @@ export default function BankConnectionsScreen() {
           />
         }
       >
-        <AnimatedScreenSection index={0} className="mb-4">
-          <View
-            className="p-4 rounded-2xl"
-            style={{ backgroundColor: colors.primaryBackground }}
-          >
-            <Text className="text-sm font-semibold" style={{ color: colors.primary }}>
-              Read-only bank connection
-            </Text>
-            <Text className="text-sm mt-2" style={{ color: colors.textSecondary }}>
-              SEFA can read account details and transaction history for budgeting, but it cannot transfer, withdraw, or move your money.
-            </Text>
-            <Text className="text-xs mt-2" style={{ color: colors.textTertiary }}>
-              Your bank login is handled by Mono, not entered into SEFA. You can disconnect at any time.
-            </Text>
-          </View>
+        {/* Info strip */}
+        <AnimatedScreenSection
+          index={0}
+          style={{
+            backgroundColor: colors.primaryBackground,
+            borderRadius: 14,
+            paddingHorizontal: 14,
+            paddingVertical: 12,
+            marginBottom: 20,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+          }}
+        >
+          <Ionicons name="lock-closed-outline" size={16} color={colors.primary} />
+          <Text style={{ flex: 1, fontSize: 13, color: colors.textSecondary, lineHeight: 19 }}>
+            Read-only access. SEFA cannot transfer or move your money.
+          </Text>
         </AnimatedScreenSection>
 
         {isLoading && (
-          <View className="py-10 items-center">
+          <View style={{ paddingVertical: 48, alignItems: 'center' }}>
             <ActivityIndicator size="small" color={colors.primary} />
-            <Text className="text-sm mt-2" style={{ color: colors.textSecondary }}>
-              Loading connections...
-            </Text>
           </View>
         )}
 
         {!isLoading && !hasConnections && (
-          <AnimatedScreenSection index={1} className="items-center py-10">
+          <AnimatedScreenSection index={1} style={{ alignItems: 'center', paddingVertical: 48 }}>
             <View
-              className="w-16 h-16 rounded-full items-center justify-center mb-4"
-              style={{ backgroundColor: colors.primaryBackground }}
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: colors.primaryBackground,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 16,
+              }}
             >
               <Ionicons name="link-outline" size={28} color={colors.primary} />
             </View>
-            <Text className="text-base font-semibold" style={{ color: colors.text }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text, marginBottom: 6 }}>
               No bank connections
             </Text>
-            <Text className="text-sm mt-1 text-center" style={{ color: colors.textSecondary }}>
-              Connect your bank to start syncing transactions.
+            <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', maxWidth: 240, marginBottom: 20 }}>
+              Connect your bank to automatically sync transactions.
             </Text>
             <TouchableOpacity
               onPress={openMonoWidget}
-              className="mt-4 px-5 py-3 rounded-full"
-              style={{ backgroundColor: colors.primary }}
+              style={{
+                paddingHorizontal: 20,
+                paddingVertical: 11,
+                borderRadius: 999,
+                backgroundColor: colors.primary,
+              }}
             >
-              <Text className="text-sm font-semibold" style={{ color: colors.textInverse }}>
-                Connect New Bank
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF' }}>
+                Connect Bank
               </Text>
             </TouchableOpacity>
           </AnimatedScreenSection>
@@ -275,47 +330,72 @@ export default function BankConnectionsScreen() {
 
         {hasConnections && (
           <AnimatedScreenSection index={1}>
-            <View>
-              {(connections ?? []).map((connection, index) => (
-                <AnimatedListItem
-                  key={connection.id}
-                  index={index}
-                  total={connections?.length ?? 0}
-                  group="xs"
-                >
-                  <BankConnectionCard
-                    connection={connection}
-                    onSync={() => handleSync(connection)}
-                    onToggleAutoSync={(enabled) => handleToggleAutoSync(connection, enabled)}
-                    onDisconnect={() => handleDisconnect(connection)}
-                    onViewDetails={() =>
-                      router.push({
-                        pathname: '/settings/sync-details/[id]',
-                        params: {
-                          id: connection.id,
-                          kind: 'connection',
-                        },
-                      })
-                    }
-                    isSyncing={isSyncingConnection(connection.id)}
-                    isUpdating={isUpdatingConnection(connection.id)}
-                  />
-                </AnimatedListItem>
-              ))}
-            </View>
+            {(connections ?? []).map((connection, index) => (
+              <AnimatedListItem
+                key={connection.id}
+                index={index}
+                total={connections?.length ?? 0}
+                group="xs"
+              >
+                <BankConnectionCard
+                  connection={connection}
+                  onSync={() => handleSync(connection)}
+                  onToggleAutoSync={(enabled) => handleToggleAutoSync(connection, enabled)}
+                  onDisconnect={() => handleDisconnect(connection)}
+                  onViewDetails={() =>
+                    router.push({
+                      pathname: '/settings/sync-details/[id]',
+                      params: { id: connection.id, kind: 'connection' },
+                    })
+                  }
+                  isSyncing={isSyncingConnection(connection.id)}
+                  isUpdating={isUpdatingConnection(connection.id)}
+                />
+              </AnimatedListItem>
+            ))}
           </AnimatedScreenSection>
         )}
       </ScrollView>
+
+      {isReturningFromMono && (
+        <View
+          pointerEvents="auto"
+          style={{
+            position: 'absolute',
+            top: 0, right: 0, bottom: 0, left: 0,
+            backgroundColor: 'rgba(255,255,255,0.88)',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 32,
+          }}
+        >
+          <View
+            style={{
+              borderRadius: 24,
+              paddingHorizontal: 28,
+              paddingVertical: 28,
+              alignItems: 'center',
+              backgroundColor: colors.background,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text, marginTop: 16 }}>
+              Syncing your bank
+            </Text>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 6, textAlign: 'center' }}>
+              Pulling your account data into SEFA.
+            </Text>
+          </View>
+        </View>
+      )}
 
       <MonoConnectWidget
         visible={showMono}
         onSuccess={handleMonoSuccess}
         onClose={() => setShowMono(false)}
-        customer={{
-          id: user?.id || '',
-          email: user?.email,
-          name: user?.name,
-        }}
+        customer={{ id: user?.id || '', email: user?.email, name: user?.name }}
       />
 
       <Toast

@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import * as LocalAuthentication from 'expo-local-authentication';
-import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import * as SecureStore from '@/utils/secureStore';
 
 import type {
   AppSecuritySettings,
@@ -294,6 +294,12 @@ const getBiometricPromptMessage = (
         return `Use ${label || 'biometrics'} to disconnect a bank account`;
       case 'change_password':
         return `Use ${label || 'biometrics'} to change your password`;
+      case 'assistant_history':
+        return `Use ${label || 'biometrics'} to open SEFA Assistant`;
+      case 'statement_import_history':
+        return `Use ${label || 'biometrics'} to open statement imports`;
+      case 'statement_import_confirm':
+        return `Use ${label || 'biometrics'} to confirm this statement import`;
       default:
         return `Use ${label || 'biometrics'} to continue`;
     }

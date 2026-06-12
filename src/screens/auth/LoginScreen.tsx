@@ -84,7 +84,7 @@ export default function LoginScreen() {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View className="flex-1">
       {/* Logo Header */}
-      <ScaleIn style={{ paddingHorizontal: 24, paddingTop: 48, paddingBottom: 16 }}>
+      <ScaleIn preset="none" style={{ paddingHorizontal: 24, paddingTop: 48, paddingBottom: 16 }}>
         <View className="flex-row items-center justify-between">
           {/* Logo + SEFA Text */}
           <View className="flex-row items-center">
@@ -119,7 +119,7 @@ export default function LoginScreen() {
 
       <View className="flex-1 px-6 pt-8">
         {/* Header */}
-        <FadeUp style={{ marginBottom: 32 }}>
+        <FadeUp preset="none" style={{ marginBottom: 32 }}>
           <Text
             className="text-3xl font-bold mb-2"
             style={{ color: colors.text }}
@@ -135,7 +135,7 @@ export default function LoginScreen() {
         </FadeUp>
 
         {/* Form */}
-        <AnimatedScreenSection index={0}>
+        <AnimatedScreenSection preset="none" index={0}>
           <Input
             label="Your email"
             value={email}
@@ -147,7 +147,7 @@ export default function LoginScreen() {
           />
         </AnimatedScreenSection>
 
-        <AnimatedScreenSection index={1}>
+        <AnimatedScreenSection preset="none" index={1}>
           <PasswordInput
             label="Password"
             value={password}
@@ -157,7 +157,7 @@ export default function LoginScreen() {
           />
         </AnimatedScreenSection>
 
-        <AnimatedScreenSection index={2} variant="slide">
+        <AnimatedScreenSection preset="none" index={2} variant="slide">
           <TouchableOpacity
             onPress={() => router.push('/(auth)/forgot-password')}
             className="self-end mb-6"
@@ -171,7 +171,7 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </AnimatedScreenSection>
 
-        <AnimatedScreenSection index={3}>
+        <AnimatedScreenSection preset="none" index={3}>
           <Button
             title="Sign In"
             onPress={handleLogin}
@@ -182,7 +182,7 @@ export default function LoginScreen() {
         </AnimatedScreenSection>
 
         {/* Sign Up Link */}
-        <AnimatedScreenSection index={4} style={{ marginTop: 24 }}>
+        <AnimatedScreenSection preset="none" index={4} style={{ marginTop: 24 }}>
           <View className="flex-row justify-center items-center">
             <Text
               className="text-base"
