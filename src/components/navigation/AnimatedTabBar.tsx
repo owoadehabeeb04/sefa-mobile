@@ -17,6 +17,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 // Badge removed — notifications is no longer a tab
 
+
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const VISIBLE_TAB_NAMES = ['index', 'transactions', 'assistant', 'insights', 'settings'] as const;
 
