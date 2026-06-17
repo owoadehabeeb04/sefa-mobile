@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   Text,
@@ -24,13 +25,16 @@ import {
   assistantChatsQueryKey,
   useArchiveAssistantChat,
   useAssistantChat,
+  useCancelAssistantAction,
   useCancelAssistantMessage,
+  useConfirmAssistantAction,
+  useEditAssistantAction,
   useEditAssistantMessage,
   useRegenerateAssistantMessage,
   useRetryAssistantMessage,
 } from '@/features/assistant/assistant.hooks';
 import { openAssistantSocketSession } from '@/features/assistant/assistant.service';
-import type { AssistantMessage } from '@/features/assistant/assistant.types';
+import type { AssistantAction, AssistantMessage } from '@/features/assistant/assistant.types';
 import { AssistantMessageBubble } from '@/features/assistant/components/AssistantMessageBubble';
 
 const copyText = async (value: string) => {
@@ -76,6 +80,7 @@ const buildOptimisticConversation = (content: string, chatId?: string | null): A
       version: 1,
       sources: [],
       retrieval: null,
+      actions: [],
       createdAt: now,
       updatedAt: now,
       completedAt: now,
@@ -90,11 +95,36 @@ const buildOptimisticConversation = (content: string, chatId?: string | null): A
       version: 1,
       sources: [],
       retrieval: null,
+      actions: [],
       createdAt: now,
       updatedAt: now,
     },
   ];
 };
+
+const payloadValue = (payload: Record<string, any> | undefined, key: string) => {
+  const value = payload?.[key];
+  return value === null || value === undefined ? '' : String(value);
+};
+
+const actionEditTitle = (action: AssistantAction | null) => {
+  if (!action) return 'Edit action';
+  if (action.actionType === 'create_category') return 'Edit category';
+  if (action.actionType === 'create_income') return 'Edit income';
+  return 'Edit expense';
+};
+
+const buildActionEditDraft = (action: AssistantAction) => ({
+  amount: payloadValue(action.payload, 'amount'),
+  categoryName: payloadValue(action.payload, 'categoryName'),
+  date: payloadValue(action.payload, 'dateLabel') || payloadValue(action.payload, 'date'),
+  description: payloadValue(action.payload, 'description'),
+  name: payloadValue(action.payload, 'name'),
+  source: payloadValue(action.payload, 'source'),
+  type: payloadValue(action.payload, 'type'),
+});
+
+type ActionEditDraft = ReturnType<typeof buildActionEditDraft>;
 
 export default function AssistantChatScreen() {
   const colorScheme = useColorScheme() ?? 'light';
@@ -113,7 +143,10 @@ export default function AssistantChatScreen() {
   );
   const [draft, setDraft] = useState('');
   const [editingMessage, setEditingMessage] = useState<AssistantMessage | null>(null);
+  const [editingAction, setEditingAction] = useState<AssistantAction | null>(null);
+  const [actionEditDraft, setActionEditDraft] = useState<ActionEditDraft | null>(null);
   const [optimisticMessages, setOptimisticMessages] = useState<AssistantMessage[]>([]);
+  const [activityByMessageId, setActivityByMessageId] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({
     visible: false,
     message: '',
@@ -126,6 +159,9 @@ export default function AssistantChatScreen() {
   const retryMessage = useRetryAssistantMessage(activeChatId || '');
   const cancelMessage = useCancelAssistantMessage(activeChatId || '');
   const archiveChat = useArchiveAssistantChat(activeChatId || '');
+  const confirmAction = useConfirmAssistantAction(activeChatId || '');
+  const cancelAction = useCancelAssistantAction(activeChatId || '');
+  const editAction = useEditAssistantAction(activeChatId || '');
 
   useEffect(() => {
     optimisticMessagesRef.current = optimisticMessages;
@@ -140,7 +176,10 @@ export default function AssistantChatScreen() {
     setActiveChatId(routeChatId && routeChatId !== 'new' ? routeChatId : null);
     seededRef.current = false;
     setEditingMessage(null);
+    setEditingAction(null);
+    setActionEditDraft(null);
     setOptimisticMessages([]);
+    setActivityByMessageId({});
     if (!seed) {
       setDraft('');
       composerMirrorRef.current = '';
@@ -212,6 +251,7 @@ export default function AssistantChatScreen() {
                 ...existing,
                 content: event.fullText || existing.content,
                 status: event.isFinal ? 'completed' : 'streaming',
+                actions: Array.isArray(event.actions) ? event.actions : existing.actions,
                 sources: Array.isArray(event.sources) ? event.sources : existing.sources,
                 retrieval: event.retrieval ?? existing.retrieval,
                 completedAt: event.isFinal ? new Date().toISOString() : existing.completedAt,
@@ -221,9 +261,30 @@ export default function AssistantChatScreen() {
           });
 
           if (event.type === 'assistant.done') {
+            setActivityByMessageId((prev) => {
+              const next = { ...prev };
+              delete next[event.assistantMessageId];
+              return next;
+            });
             queryClient.invalidateQueries({ queryKey: assistantChatQueryKey(nextChatId) });
             queryClient.invalidateQueries({ queryKey: assistantChatsQueryKey });
           }
+          return;
+        }
+
+        if (event.type === 'assistant.activity' && event.assistantMessageId) {
+          if (event.stage === 'done') {
+            setActivityByMessageId((prev) => {
+              const next = { ...prev };
+              delete next[event.assistantMessageId];
+              return next;
+            });
+            return;
+          }
+          setActivityByMessageId((prev) => ({
+            ...prev,
+            [event.assistantMessageId]: event.label || 'SEFA is working...',
+          }));
           return;
         }
 
@@ -245,12 +306,25 @@ export default function AssistantChatScreen() {
             };
           });
           queryClient.invalidateQueries({ queryKey: assistantChatsQueryKey });
+          setActivityByMessageId((prev) => {
+            const next = { ...prev };
+            delete next[event.assistantMessageId];
+            return next;
+          });
           return;
         }
 
         if (event.type === 'assistant.error') {
           queryClient.invalidateQueries({ queryKey: assistantChatsQueryKey });
           setToast({ visible: true, message: event.message || 'Assistant request failed', type: 'error' });
+          return;
+        }
+
+        if (typeof event.type === 'string' && event.type.startsWith('action.')) {
+          const nextChatId = event.chatId || activeChatId;
+          if (!nextChatId) return;
+          queryClient.invalidateQueries({ queryKey: assistantChatQueryKey(nextChatId) });
+          queryClient.invalidateQueries({ queryKey: assistantChatsQueryKey });
         }
       },
       onError: (error) => {
@@ -292,7 +366,13 @@ export default function AssistantChatScreen() {
     ['queued', 'generating', 'streaming'].includes(message.status),
   );
   const isMessageActionPending =
-    editMessage.isPending || regenerateMessage.isPending || retryMessage.isPending || cancelMessage.isPending;
+    editMessage.isPending
+    || regenerateMessage.isPending
+    || retryMessage.isPending
+    || cancelMessage.isPending
+    || confirmAction.isPending
+    || cancelAction.isPending
+    || editAction.isPending;
 
   const chat = data?.chat || {
     id: activeChatId || 'new',
@@ -328,14 +408,83 @@ export default function AssistantChatScreen() {
       setDraft('');
       composerMirrorRef.current = '';
     } catch (error: any) {
-      setToast({ visible: true, message: error?.message || 'Failed to send message', type: 'error' });
+      setToast({
+        visible: true,
+        message: error?.message || 'Failed to send message',
+        type: 'error',
+      });
     }
   };
 
   const beginEdit = (message: AssistantMessage) => {
+    setEditingAction(null);
     setEditingMessage(message);
     setDraft(message.content);
     composerMirrorRef.current = message.content;
+  };
+
+  const beginActionEdit = (action: AssistantAction) => {
+    setEditingMessage(null);
+    setEditingAction(action);
+    setActionEditDraft(buildActionEditDraft(action));
+  };
+
+  const closeActionEdit = () => {
+    setEditingAction(null);
+    setActionEditDraft(null);
+  };
+
+  const updateActionEditField = (field: keyof ActionEditDraft, value: string) => {
+    setActionEditDraft((current) => (current ? { ...current, [field]: value } : current));
+  };
+
+  const handleSaveActionEdit = async () => {
+    if (!editingAction || !actionEditDraft) return;
+
+    const clean = (value: string) => value.trim();
+    const payload: Record<string, any> = {};
+
+    if (editingAction.actionType === 'create_category') {
+      if (clean(actionEditDraft.name)) payload.name = clean(actionEditDraft.name);
+      if (clean(actionEditDraft.type)) payload.type = clean(actionEditDraft.type).toLowerCase();
+    } else if (editingAction.actionType === 'create_income') {
+      if (clean(actionEditDraft.amount)) payload.amount = Number(clean(actionEditDraft.amount).replace(/,/g, ''));
+      if (clean(actionEditDraft.source)) payload.source = clean(actionEditDraft.source);
+      if (clean(actionEditDraft.categoryName)) payload.categoryName = clean(actionEditDraft.categoryName);
+      if (clean(actionEditDraft.date)) payload.date = clean(actionEditDraft.date);
+      if (clean(actionEditDraft.description)) payload.description = clean(actionEditDraft.description);
+    } else if (editingAction.actionType === 'create_expense') {
+      if (clean(actionEditDraft.amount)) payload.amount = Number(clean(actionEditDraft.amount).replace(/,/g, ''));
+      if (clean(actionEditDraft.categoryName)) payload.categoryName = clean(actionEditDraft.categoryName);
+      if (clean(actionEditDraft.date)) payload.date = clean(actionEditDraft.date);
+      if (clean(actionEditDraft.description)) payload.description = clean(actionEditDraft.description);
+    }
+
+    try {
+      await editAction.mutateAsync({ actionId: editingAction.actionId, payload });
+      closeActionEdit();
+      setToast({ visible: true, message: 'Action updated', type: 'success' });
+    } catch (error: any) {
+      setToast({ visible: true, message: error?.message || 'Failed to update action', type: 'error' });
+    }
+  };
+
+  const handleConfirmAction = async (action: AssistantAction) => {
+    try {
+      await confirmAction.mutateAsync(action.actionId);
+      setToast({ visible: true, message: 'Action completed', type: 'success' });
+    } catch (error: any) {
+      setToast({ visible: true, message: error?.message || 'Failed to confirm action', type: 'error' });
+    }
+  };
+
+  const handleCancelAction = async (action: AssistantAction) => {
+    try {
+      await cancelAction.mutateAsync(action.actionId);
+      setToast({ visible: true, message: 'Action cancelled', type: 'success' });
+    } catch (error: any) {
+      setToast({ visible: true, message: error?.message || 'Failed to cancel action', type: 'error' });
+    }
   };
 
   const handleCopyMessage = async (message: AssistantMessage) => {
@@ -422,6 +571,246 @@ export default function AssistantChatScreen() {
         onHide={() => setToast((prev) => ({ ...prev, visible: false }))}
       />
 
+      <Modal
+        visible={Boolean(editingAction && actionEditDraft)}
+        transparent
+        animationType="fade"
+        onRequestClose={closeActionEdit}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
+          style={{
+            flex: 1,
+            justifyContent: 'flex-end',
+            backgroundColor: 'rgba(0,0,0,0.35)',
+          }}
+        >
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{
+              flexGrow: 1,
+              justifyContent: 'flex-end',
+              padding: 12,
+            }}
+          >
+          <View
+            style={{
+              borderRadius: 24,
+              backgroundColor: colors.background,
+              padding: 16,
+              gap: 12,
+              maxHeight: '88%',
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700' }}>
+                {actionEditTitle(editingAction)}
+              </Text>
+              <TouchableOpacity onPress={closeActionEdit} style={{ padding: 4 }}>
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {editingAction?.actionType === 'create_category' && actionEditDraft ? (
+              <>
+                <View style={{ gap: 6 }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>Category name</Text>
+                  <TextInput
+                    value={actionEditDraft.name}
+                    onChangeText={(value) => updateActionEditField('name', value)}
+                    placeholder="e.g. Allowance"
+                    placeholderTextColor={colors.textTertiary}
+                    style={{
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      backgroundColor: colors.backgroundSecondary,
+                      color: colors.text,
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                    }}
+                  />
+                </View>
+                <View style={{ gap: 6 }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>Category type</Text>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {(['expense', 'income'] as const).map((type) => {
+                      const selected = actionEditDraft.type.toLowerCase() === type;
+                      return (
+                        <TouchableOpacity
+                          key={type}
+                          onPress={() => updateActionEditField('type', type)}
+                          style={{
+                            flex: 1,
+                            alignItems: 'center',
+                            borderRadius: 14,
+                            borderWidth: 1,
+                            borderColor: selected ? colors.primary : colors.border,
+                            backgroundColor: selected ? colors.primaryBackground : colors.backgroundSecondary,
+                            paddingVertical: 10,
+                          }}
+                        >
+                          <Text style={{ color: selected ? colors.primary : colors.textSecondary, fontWeight: '700' }}>
+                            {type === 'expense' ? 'Expense' : 'Income'}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              </>
+            ) : null}
+
+            {editingAction?.actionType === 'create_income' && actionEditDraft ? (
+              <>
+                <View style={{ gap: 6 }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>Amount</Text>
+                  <TextInput
+                    value={actionEditDraft.amount}
+                    onChangeText={(value) => updateActionEditField('amount', value)}
+                    keyboardType="numeric"
+                    placeholder="70000"
+                    placeholderTextColor={colors.textTertiary}
+                    style={{
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      backgroundColor: colors.backgroundSecondary,
+                      color: colors.text,
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                    }}
+                  />
+                </View>
+                <View style={{ gap: 6 }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>Source / category</Text>
+                  <TextInput
+                    value={actionEditDraft.source || actionEditDraft.categoryName}
+                    onChangeText={(value) => {
+                      updateActionEditField('source', value);
+                      updateActionEditField('categoryName', value);
+                    }}
+                    placeholder="Allowance"
+                    placeholderTextColor={colors.textTertiary}
+                    style={{
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      backgroundColor: colors.backgroundSecondary,
+                      color: colors.text,
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                    }}
+                  />
+                </View>
+              </>
+            ) : null}
+
+            {editingAction?.actionType === 'create_expense' && actionEditDraft ? (
+              <>
+                <View style={{ gap: 6 }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>Amount</Text>
+                  <TextInput
+                    value={actionEditDraft.amount}
+                    onChangeText={(value) => updateActionEditField('amount', value)}
+                    keyboardType="numeric"
+                    placeholder="5000"
+                    placeholderTextColor={colors.textTertiary}
+                    style={{
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      backgroundColor: colors.backgroundSecondary,
+                      color: colors.text,
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                    }}
+                  />
+                </View>
+                <View style={{ gap: 6 }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>Category</Text>
+                  <TextInput
+                    value={actionEditDraft.categoryName}
+                    onChangeText={(value) => updateActionEditField('categoryName', value)}
+                    placeholder="Food"
+                    placeholderTextColor={colors.textTertiary}
+                    style={{
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      backgroundColor: colors.backgroundSecondary,
+                      color: colors.text,
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                    }}
+                  />
+                </View>
+              </>
+            ) : null}
+
+            {editingAction?.actionType !== 'create_category' && actionEditDraft ? (
+              <>
+                <View style={{ gap: 6 }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>Date</Text>
+                  <TextInput
+                    value={actionEditDraft.date}
+                    onChangeText={(value) => updateActionEditField('date', value)}
+                    placeholder="today or 2026-06-16"
+                    placeholderTextColor={colors.textTertiary}
+                    style={{
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      backgroundColor: colors.backgroundSecondary,
+                      color: colors.text,
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                    }}
+                  />
+                </View>
+                <View style={{ gap: 6 }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>Note</Text>
+                  <TextInput
+                    value={actionEditDraft.description}
+                    onChangeText={(value) => updateActionEditField('description', value)}
+                    placeholder="Optional note"
+                    placeholderTextColor={colors.textTertiary}
+                    style={{
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      backgroundColor: colors.backgroundSecondary,
+                      color: colors.text,
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                    }}
+                  />
+                </View>
+              </>
+            ) : null}
+
+            <TouchableOpacity
+              disabled={editAction.isPending}
+              onPress={handleSaveActionEdit}
+              style={{
+                alignItems: 'center',
+                borderRadius: 16,
+                backgroundColor: colors.primary,
+                paddingVertical: 12,
+                opacity: editAction.isPending ? 0.7 : 1,
+              }}
+            >
+              <Text style={{ color: colors.textInverse, fontSize: 14, fontWeight: '800' }}>
+                {editAction.isPending ? 'Saving...' : 'Save changes'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
+
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {/* Minimal header */}
         <View
@@ -467,9 +856,13 @@ export default function AssistantChatScreen() {
               colors={colors}
               formatTime={formatTime}
               isBusy={isMessageActionPending}
+              activityLabel={activityByMessageId[message.id]}
               message={message}
               onCancel={handleCancelResponse}
+              onCancelAction={handleCancelAction}
+              onConfirmAction={handleConfirmAction}
               onCopy={handleCopyMessage}
+              onEditAction={beginActionEdit}
               onEdit={beginEdit}
               onRegenerate={handleRegenerateMessage}
               onRetry={handleRetryMessage}

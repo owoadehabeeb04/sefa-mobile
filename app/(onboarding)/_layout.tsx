@@ -38,7 +38,11 @@ export default function OnboardingLayout() {
 
   // If onboarding is already completed, redirect to main app
   if (user.onboardingCompleted) {
-    if (currentScreen === 'security-setup' && !settings.setupPromptCompleted) {
+    if (!settings.setupPromptCompleted) {
+      if (currentScreen !== 'security-setup') {
+        return <Redirect href="/(onboarding)/security-setup" />;
+      }
+
       return (
         <Stack
           screenOptions={{

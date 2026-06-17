@@ -8,12 +8,15 @@ import { useCurrentUser } from '@/features/auth/auth.hooks';
 import { useOnboardingStatus } from '@/features/onboarding/onboarding.hooks';
 import { getOnboardingRoute } from '@/features/auth/auth-routing';
 import { PushNotificationService } from '@/services/pushNotification.service';
+import { useAppLockStore } from '@/store/appLock.store';
+import { Loading } from '@/src/components/common/Loading';
 
 export default function TabLayout() {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useAuthStore();
   const { data: userData, isLoading: userLoading, isError } = useCurrentUser();
   const { data: onboardingData, isLoading: onboardingLoading } = useOnboardingStatus();
+  const { isInitialized: securityInitialized, settings } = useAppLockStore();
   const handledNotificationResponseId = useRef<string | null>(null);
 
   const navigateFromNotificationResponse = useCallback((response: NotificationResponse | null) => {
@@ -36,7 +39,7 @@ export default function TabLayout() {
 
   // Guard: Redirect if not authenticated
   useEffect(() => {
-    if (authLoading || userLoading || onboardingLoading) return;
+    if (authLoading || userLoading || onboardingLoading || !securityInitialized) return;
 
     if (isError || !isAuthenticated || !userData?.data?.user) {
       router.replace('/(auth)/login');
@@ -56,7 +59,11 @@ export default function TabLayout() {
       router.replace(getOnboardingRoute(onboardingData?.data || null));
       return;
     }
-  }, [authLoading, userLoading, onboardingLoading, isAuthenticated, userData, onboardingData, isError, router]);
+
+    if (!settings.setupPromptCompleted) {
+      router.replace('/(onboarding)/security-setup');
+    }
+  }, [authLoading, userLoading, onboardingLoading, securityInitialized, isAuthenticated, userData, onboardingData, isError, router, settings.setupPromptCompleted]);
 
   // Register for push notifications once authenticated
   useEffect(() => {
@@ -102,8 +109,8 @@ export default function TabLayout() {
   }, [isAuthenticated, navigateFromNotificationResponse, userData]);
 
   // Show nothing while checking auth status
-  if (authLoading || userLoading || onboardingLoading) {
-    return null;
+  if (authLoading || userLoading || onboardingLoading || !securityInitialized) {
+    return <Loading fullScreen message="Loading..." />;
   }
 
   // If not authenticated or not verified or onboarding not completed, redirect
@@ -117,6 +124,10 @@ export default function TabLayout() {
 
   if (!userData.data.user.onboardingCompleted) {
     return <Redirect href={getOnboardingRoute(onboardingData?.data || null)} />;
+  }
+
+  if (!settings.setupPromptCompleted) {
+    return <Redirect href="/(onboarding)/security-setup" />;
   }
 
   return (

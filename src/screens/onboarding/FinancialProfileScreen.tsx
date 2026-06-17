@@ -84,6 +84,7 @@ export default function OnboardingSetupScreen() {
 
   const [monthlyBudget, setMonthlyBudget] = useState('');
   const [consentGiven, setConsentGiven] = useState(initialConsent);
+  const [isFinalizingSetup, setIsFinalizingSetup] = useState(false);
 
   useEffect(() => {
     if (hasExistingBudget && !monthlyBudget) {
@@ -114,6 +115,8 @@ export default function OnboardingSetupScreen() {
       return;
     }
 
+    setIsFinalizingSetup(true);
+
     try {
       if (!skipBudget && amount != null) {
         await updateBudgetMutation.mutateAsync(amount);
@@ -138,6 +141,7 @@ export default function OnboardingSetupScreen() {
         router.replace('/(tabs)');
       }
     } catch (error: any) {
+      setIsFinalizingSetup(false);
       const errorMessage =
         error?.response?.data?.message
         || error?.message
@@ -145,6 +149,10 @@ export default function OnboardingSetupScreen() {
       showToast(errorMessage, 'error');
     }
   };
+
+  if (isSubmitting || isFinalizingSetup) {
+    return <Loading fullScreen message="Finishing setup..." />;
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -158,8 +166,6 @@ export default function OnboardingSetupScreen() {
           type={toastConfig.type}
           onHide={hideToast}
         />
-
-        {isSubmitting && <Loading fullScreen message="Finishing setup..." />}
 
         <ScrollView
           style={{ flex: 1 }}

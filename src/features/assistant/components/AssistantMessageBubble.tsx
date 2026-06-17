@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Markdown from 'react-native-markdown-display';
 
 import { Colors } from '@/constants/theme';
-import type { AssistantMessage } from '@/features/assistant/assistant.types';
+import type { AssistantAction, AssistantMessage } from '@/features/assistant/assistant.types';
 
 function TypingDots({ color }: { color: string }) {
   const dots = [useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current];
@@ -42,6 +42,19 @@ function TypingDots({ color }: { color: string }) {
   );
 }
 
+function ActivityStatus({ color, label }: { color: string; label: string }) {
+  return (
+    <View style={{ gap: 6, paddingVertical: 4 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <TypingDots color={color} />
+        <Text style={{ color, fontSize: 13, fontWeight: '600', flexShrink: 1 }}>
+          {label}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 const actionBtn = (colors: typeof Colors.light) => ({
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
@@ -52,24 +65,32 @@ const actionBtn = (colors: typeof Colors.light) => ({
 });
 
 type Props = {
+  activityLabel?: string;
   colors: typeof Colors.light;
   formatTime: (value?: string | null) => string;
   isBusy?: boolean;
   message: AssistantMessage;
   onCancel: (message: AssistantMessage) => void;
+  onCancelAction: (action: AssistantAction) => void;
+  onConfirmAction: (action: AssistantAction) => void;
   onCopy: (message: AssistantMessage) => void;
+  onEditAction: (action: AssistantAction) => void;
   onEdit: (message: AssistantMessage) => void;
   onRegenerate: (message: AssistantMessage) => void;
   onRetry: (message: AssistantMessage) => void;
 };
 
 export function AssistantMessageBubble({
+  activityLabel,
   colors,
   formatTime,
   isBusy = false,
   message,
   onCancel,
+  onCancelAction,
+  onConfirmAction,
   onCopy,
+  onEditAction,
   onEdit,
   onRegenerate,
   onRetry,
@@ -78,6 +99,8 @@ export function AssistantMessageBubble({
   const isActive = ['queued', 'generating', 'streaming'].includes(message.status);
   const hasFailed = message.status === 'failed';
   const sources = message.sources || [];
+  const pendingActions = (message.actions || []).filter((action) => action.status === 'pending_confirmation');
+  const completedActions = (message.actions || []).filter((action) => ['executed', 'cancelled', 'failed'].includes(action.status));
   const canShowSources = !isUser && message.status === 'completed' && sources.length > 0;
 
   const userBubble = isUser;
@@ -140,7 +163,7 @@ export function AssistantMessageBubble({
         }}
       >
         {isActive && !message.content ? (
-          <TypingDots color={colors.textTertiary} />
+          <ActivityStatus color={colors.textTertiary} label={activityLabel || 'SEFA is thinking...'} />
         ) : (
           <>
             <Markdown style={markdownStyles}>
@@ -176,6 +199,112 @@ export function AssistantMessageBubble({
                     </Pressable>
                   ))}
                 </View>
+              </View>
+            ) : null}
+
+            {!isUser && pendingActions.length > 0 ? (
+              <View style={{ marginTop: 8, gap: 8 }}>
+                {pendingActions.map((action) => (
+                  <View
+                    key={action.actionId}
+                    style={{
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      backgroundColor: colors.background,
+                      padding: 10,
+                      gap: 8,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Ionicons name="shield-checkmark-outline" size={16} color={colors.primary} />
+                      <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700', flex: 1 }}>
+                        Confirmation required
+                      </Text>
+                    </View>
+                    <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 19 }}>
+                      {action.confirmationMessage}
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <Pressable
+                        disabled={isBusy}
+                        onPress={() => onConfirmAction(action)}
+                        style={{
+                          flex: 1,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: 12,
+                          paddingVertical: 9,
+                          backgroundColor: colors.primary,
+                          opacity: isBusy ? 0.6 : 1,
+                        }}
+                      >
+                        <Text style={{ color: colors.textInverse, fontSize: 13, fontWeight: '700' }}>
+                          Confirm
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        disabled={isBusy}
+                        onPress={() => onEditAction(action)}
+                        style={{
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: 12,
+                          paddingHorizontal: 13,
+                          backgroundColor: colors.backgroundSecondary,
+                          opacity: isBusy ? 0.6 : 1,
+                        }}
+                      >
+                        <Ionicons name="create-outline" size={15} color={colors.textSecondary} />
+                      </Pressable>
+                      <Pressable
+                        disabled={isBusy}
+                        onPress={() => onCancelAction(action)}
+                        style={{
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: 12,
+                          paddingHorizontal: 13,
+                          backgroundColor: colors.backgroundSecondary,
+                          opacity: isBusy ? 0.6 : 1,
+                        }}
+                      >
+                        <Ionicons name="close-outline" size={17} color={colors.textSecondary} />
+                      </Pressable>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            {!isUser && completedActions.length > 0 ? (
+              <View style={{ marginTop: 8, gap: 6 }}>
+                {completedActions.map((action) => (
+                  <View
+                    key={action.actionId}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 6,
+                      borderRadius: 999,
+                      alignSelf: 'flex-start',
+                      backgroundColor: colors.background,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      paddingHorizontal: 9,
+                      paddingVertical: 5,
+                    }}
+                  >
+                    <Ionicons
+                      name={action.status === 'executed' ? 'checkmark-circle-outline' : action.status === 'failed' ? 'alert-circle-outline' : 'close-circle-outline'}
+                      size={13}
+                      color={action.status === 'executed' ? colors.success : action.status === 'failed' ? colors.error : colors.textTertiary}
+                    />
+                    <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
+                      {action.status === 'executed' ? 'Action completed' : action.status === 'failed' ? 'Action failed' : 'Action cancelled'}
+                    </Text>
+                  </View>
+                ))}
               </View>
             ) : null}
           </>

@@ -4,7 +4,7 @@
     "slug": "sefa",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/app-icon.png",
     "scheme": "sefa",
     "userInterfaceStyle": "light",
     "newArchEnabled": false,
@@ -49,7 +49,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/icon.png",
+          "icon": "./assets/images/notification-icon.png",
           "color": "#3629B7",
           "defaultChannel": "default",
           "sounds": [],

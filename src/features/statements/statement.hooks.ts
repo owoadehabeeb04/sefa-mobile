@@ -33,10 +33,13 @@ export const useStatementImport = (id?: string) =>
     queryKey: statementImportQueryKey(id || ''),
     queryFn: () => getStatementImport(id || ''),
     enabled: Boolean(id),
-    staleTime: 10 * 1000,
+    staleTime: 1000,
+    // Poll fast while the AI-first pipeline runs so the story-like progress
+    // screen advances through real backend steps (persisted progress). This is
+    // the reliable primary transport; SSE is an optional enhancement on top.
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      return status === 'uploaded' || status === 'extracting' || status === 'parsed' ? 3000 : false;
+      return status === 'uploaded' || status === 'extracting' || status === 'parsed' ? 1200 : false;
     },
   });
 

@@ -24,6 +24,7 @@ import {
   InsightsSparkline,
   InsightsTrendChart,
 } from '@/features/insights/insights.charts';
+import InsightsDashboard from '@/features/insights/InsightsDashboard';
 import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 import type {
   InsightAction,
@@ -294,7 +295,7 @@ export default function InsightsScreen() {
   const { data: hub, isLoading, isRefetching, refetch, error } = useInsightsHub({ months: 3, days: 30 });
   const whatIf = useWhatIfScenario();
 
-  const [activeTab, setActiveTab] = useState<'visual' | 'text'>('visual');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'visual' | 'text'>('dashboard');
   const [assistantOpening, setAssistantOpening] = useState(false);
 
   const openAssistant = async () => {
@@ -322,6 +323,48 @@ export default function InsightsScreen() {
     const categoryName = variant === 'food' ? 'Food & Dining' : topRiskCategory || 'Food & Dining';
     await whatIf.mutateAsync({ days: 30, categoryName, reductionPercent: variant === 'food' ? 15 : 12 });
   };
+
+  // Header + tab bar shared across all tabs.
+  const renderHeader = () => (
+    <>
+      <FadeUp style={{ marginBottom: 20 }}>
+        <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700' }}>Insights</Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 14, marginTop: 2 }}>
+          See your money in charts or plain words.
+        </Text>
+      </FadeUp>
+      <AnimatedScreenSection
+        index={0}
+        style={{
+          flexDirection: 'row',
+          borderRadius: 12,
+          padding: 3,
+          marginBottom: 24,
+          backgroundColor: colors.backgroundSecondary,
+        }}
+      >
+        <TabButton label="Dashboard" active={activeTab === 'dashboard'} onPress={() => setActiveTab('dashboard')} />
+        <TabButton label="Visual" active={activeTab === 'visual'} onPress={() => setActiveTab('visual')} />
+        <TabButton label="Text" active={activeTab === 'text'} onPress={() => setActiveTab('text')} />
+      </AnimatedScreenSection>
+    </>
+  );
+
+  // The Dashboard tab is self-sufficient (its own data fetching + loading/empty
+  // states), so it renders independently of the hub query used by Visual/Text.
+  if (activeTab === 'dashboard') {
+    return (
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.background }}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40, paddingTop: 8 }}
+        >
+          {renderHeader()}
+          <InsightsDashboard />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -373,28 +416,7 @@ export default function InsightsScreen() {
           <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} colors={[colors.primary]} />
         }
       >
-        {/* Header */}
-        <FadeUp style={{ marginBottom: 20 }}>
-          <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700' }}>Insights</Text>
-          <Text style={{ color: colors.textSecondary, fontSize: 14, marginTop: 2 }}>
-            See your money in charts or plain words.
-          </Text>
-        </FadeUp>
-
-        {/* Tab pill toggle */}
-        <AnimatedScreenSection
-          index={0}
-          style={{
-            flexDirection: 'row',
-            borderRadius: 12,
-            padding: 3,
-            marginBottom: 24,
-            backgroundColor: colors.backgroundSecondary,
-          }}
-        >
-          <TabButton label="Visual" active={activeTab === 'visual'} onPress={() => setActiveTab('visual')} />
-          <TabButton label="Text" active={activeTab === 'text'} onPress={() => setActiveTab('text')} />
-        </AnimatedScreenSection>
+        {renderHeader()}
 
         {activeTab === 'visual' ? (
           <>

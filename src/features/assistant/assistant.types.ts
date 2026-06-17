@@ -36,6 +36,38 @@ export interface AssistantMessageRetrieval {
   reason?: string | null;
 }
 
+export type AssistantActionType = 'create_expense' | 'create_income' | 'create_category';
+export type AssistantActionStatus =
+  | 'pending_fields'
+  | 'pending_confirmation'
+  | 'confirmed'
+  | 'cancelled'
+  | 'executed'
+  | 'failed';
+
+export type AssistantActivityStage =
+  | 'understanding_request'
+  | 'checking_db'
+  | 'calculating_insights'
+  | 'checking_details'
+  | 'searching_current_info'
+  | 'searching_web'
+  | 'searching_web_unavailable'
+  | 'preparing_confirmation'
+  | 'saving_record'
+  | 'preparing_answer'
+  | 'done';
+
+export interface AssistantAction {
+  actionId: string;
+  id: string;
+  actionType: AssistantActionType;
+  status: AssistantActionStatus;
+  confirmationMessage: string;
+  payload: Record<string, any>;
+  missingFields: string[];
+}
+
 export interface AssistantChatSummary {
   id: string;
   title: string;
@@ -65,6 +97,7 @@ export interface AssistantMessage {
   errorMessage?: string | null;
   sources: AssistantMessageSource[];
   retrieval?: AssistantMessageRetrieval | null;
+  actions: AssistantAction[];
   completedAt?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -141,7 +174,14 @@ export interface AssistantChatEvent {
   type: string;
   chatId: string;
   emittedAt: string;
+  assistantMessageId?: string;
+  stage?: AssistantActivityStage;
+  label?: string;
   chat?: AssistantChatSummary;
   message?: AssistantMessage;
+  action?: AssistantAction;
+  actionId?: string;
+  actionType?: AssistantActionType;
+  result?: unknown;
   status?: AssistantChatStatus;
 }

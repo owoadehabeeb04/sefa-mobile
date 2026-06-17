@@ -45,6 +45,18 @@ const mapImport = (raw: any): StatementImportSummary => ({
   ignoredRows: Number(raw.ignoredRows ?? 0),
   importedRows: Number(raw.importedRows ?? 0),
   errorMessage: raw.errorMessage ?? null,
+  progressStep: raw.progressStep ?? null,
+  progressPercent: Number(raw.progressPercent ?? 0),
+  progress: Array.isArray(raw.progress)
+    ? raw.progress.map((entry: any) => ({
+        step: entry.step,
+        label: entry.label ?? '',
+        percent: Number(entry.percent ?? 0),
+        at: entry.at,
+      }))
+    : [],
+  pageCount: Number(raw.pageCount ?? 0),
+  processedPageCount: Number(raw.processedPageCount ?? 0),
   isProcessing: Boolean(raw.isProcessing),
   canConfirm: Boolean(raw.canConfirm),
   createdAt: raw.createdAt,

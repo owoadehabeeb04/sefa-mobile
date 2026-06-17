@@ -18,6 +18,13 @@ export type StatementImportRowStatus =
 export type StatementClassification = 'income' | 'expense' | 'unknown';
 export type StatementDirection = 'debit' | 'credit' | 'unknown';
 
+export interface StatementProgressEntry {
+  step: string;
+  label: string;
+  percent: number;
+  at?: string;
+}
+
 export interface StatementImportSummary {
   id: string;
   fileName: string;
@@ -48,6 +55,12 @@ export interface StatementImportSummary {
   ignoredRows: number;
   importedRows: number;
   errorMessage?: string | null;
+  // Live AI-first progress (drives the story-like processing screen).
+  progressStep?: string | null;
+  progressPercent?: number;
+  progress?: StatementProgressEntry[];
+  pageCount?: number;
+  processedPageCount?: number;
   isProcessing: boolean;
   canConfirm: boolean;
   createdAt: string;

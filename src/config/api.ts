@@ -129,11 +129,13 @@ export const API_ENDPOINTS = {
   STATEMENT_IMPORTS: {
     BASE: '/statement-imports',
     UPLOAD: '/statement-imports/upload',
+    EVENTS: (id: string) => `/statement-imports/${id}/events`,
   },
 
   ASSISTANT: {
     CHATS: '/assistant/chats',
     SEARCH: '/assistant/chats/search',
+    ACTIONS: '/assistant/actions',
   },
 
   // Sync operations (bank connections)
@@ -166,5 +168,14 @@ export const API_ENDPOINTS = {
     WHAT_IF: '/insights/what-if',
     CHAT: '/insights/chat',
     FEEDBACK: '/insights/feedback',
+    // Financial intelligence dashboard (calculated-first, AI explains)
+    DASHBOARD: '/insights/dashboard',
+    OVERVIEW: '/insights/overview',
+    CATEGORY_BREAKDOWN: '/insights/category-breakdown',
+    SPENDING_DRIVERS: '/insights/spending-drivers',
+    SAVINGS_OPPORTUNITIES: '/insights/savings-opportunities',
+    BUDGET_HEALTH: '/insights/budget-health',
+    SUMMARY: '/insights/summary',
+    SUMMARY_STREAM: '/insights/summary/stream',
   },
 } as const;

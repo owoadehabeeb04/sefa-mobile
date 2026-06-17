@@ -10,11 +10,39 @@ import { Button } from '@/src/components/common/Button';
 import { Toast } from '@/src/components/common/Toast';
 import { useDeleteStatementImport, useStatementImport } from '@/features/statements/statement.hooks';
 
-const STATUS_STEPS = [
-  'Reading your statement',
-  'Extracting transactions',
-  'Checking accuracy',
-  'Preparing preview',
+// Friendly story labels for each backend progress step. The screen advances
+// through these based on REAL backend events (persisted progress), not timers.
+const STEP_STORY: Record<string, string> = {
+  'import.created': 'Statement received',
+  'upload.received': 'Statement received',
+  'file.validating': 'Checking your file',
+  'pdf.converting': 'Opening your PDF',
+  'page.image.created': 'Converting pages for AI reading',
+  'ai.reading.started': 'Reading your statement',
+  'ai.reading.page': 'Reading your statement',
+  'ai.extraction.completed': 'Finding transaction rows',
+  'rows.normalizing': 'Mapping dates, descriptions, debit, credit, and balance',
+  'rows.validating': 'Checking unclear rows',
+  'categories.suggesting': 'Suggesting categories',
+  'duplicates.checking': 'Checking possible duplicates',
+  'review.preparing': 'Preparing your review screen',
+  'import.ready': 'Ready for review',
+  'import.failed': 'Import failed',
+};
+
+// The canonical story order shown while processing. Completed steps get a check;
+// the current step gets a spinner; upcoming steps are dimmed.
+const STORY_ORDER: { key: string; label: string }[] = [
+  { key: 'file.validating', label: 'Statement received' },
+  { key: 'pdf.converting', label: 'Opening your PDF' },
+  { key: 'page.image.created', label: 'Converting pages for AI reading' },
+  { key: 'ai.reading.started', label: 'Reading your statement' },
+  { key: 'ai.extraction.completed', label: 'Finding transaction rows' },
+  { key: 'rows.normalizing', label: 'Mapping dates, amounts, debit & credit' },
+  { key: 'rows.validating', label: 'Checking unclear rows' },
+  { key: 'categories.suggesting', label: 'Suggesting categories' },
+  { key: 'duplicates.checking', label: 'Checking possible duplicates' },
+  { key: 'review.preparing', label: 'Preparing your review screen' },
 ];
 
 const getImportFailureContent = (errorMessage?: string | null) => {
@@ -140,6 +168,7 @@ export default function StatementImportDetailsScreen() {
 
   const isProcessing = statementImport.isProcessing;
   const isImported = statementImport.status === 'imported';
+  const hasNoRows = !isImported && !isProcessing && statementImport.status === 'reviewing' && statementImport.totalRows === 0;
   const hasOnlyDuplicates =
     !isImported
     && statementImport.totalRows > 0
@@ -179,35 +208,82 @@ export default function StatementImportDetailsScreen() {
               padding: 20,
             }}
           >
-            <Text style={{ color: colors.text, fontSize: 20, fontWeight: '700', marginBottom: 8 }}>
-              Reading your statement
+            <Text style={{ color: colors.text, fontSize: 20, fontWeight: '700', marginBottom: 4 }}>
+              {STEP_STORY[statementImport.progressStep || ''] || 'Reading your statement'}
             </Text>
-            <Text style={{ color: colors.textSecondary, lineHeight: 22, marginBottom: 18 }}>
-              SEFA is extracting transactions, checking accuracy, and preparing your preview.
+            <Text style={{ color: colors.textSecondary, lineHeight: 22, marginBottom: 16 }}>
+              SEFA is reading your statement page by page, then checking and preparing every row for your review.
             </Text>
 
-            {STATUS_STEPS.map((step, index) => (
-              <View key={step} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: index === STATUS_STEPS.length - 1 ? 0 : 14 }}>
-                <View
-                  style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: 12,
-                    backgroundColor: index < 2 ? colors.primary : colors.background,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: 12,
-                  }}
-                >
-                  {index < 2 ? (
-                    <Ionicons name="checkmark" size={14} color={colors.textInverse} />
-                  ) : (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  )}
+            {/* Progress bar driven by real backend percent */}
+            <View style={{ height: 8, borderRadius: 999, backgroundColor: colors.background, marginBottom: 18, overflow: 'hidden' }}>
+              <View
+                style={{
+                  height: 8,
+                  borderRadius: 999,
+                  width: `${Math.max(6, Math.min(statementImport.progressPercent || 0, 100))}%`,
+                  backgroundColor: colors.primary,
+                }}
+              />
+            </View>
+
+            {STORY_ORDER.map(({ key, label }) => {
+              const reached = (statementImport.progress || []).some((entry) => entry.step === key);
+              const isCurrent = statementImport.progressStep === key;
+              const done = reached && !isCurrent;
+              return (
+                <View key={key} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
+                  <View
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 12,
+                      backgroundColor: done ? colors.primary : colors.background,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: 12,
+                    }}
+                  >
+                    {done ? (
+                      <Ionicons name="checkmark" size={14} color={colors.textInverse} />
+                    ) : isCurrent ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border }} />
+                    )}
+                  </View>
+                  <Text
+                    style={{
+                      color: done || isCurrent ? colors.text : colors.textTertiary,
+                      fontWeight: isCurrent ? '600' : '400',
+                      flex: 1,
+                    }}
+                  >
+                    {key === 'ai.reading.started' && statementImport.pageCount
+                      ? `Reading your statement (${statementImport.pageCount} ${statementImport.pageCount === 1 ? 'page' : 'pages'})`
+                      : label}
+                  </Text>
                 </View>
-                <Text style={{ color: colors.textSecondary }}>{step}</Text>
-              </View>
-            ))}
+              );
+            })}
+
+            {/* You can leave — we'll notify you when it's ready. */}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                marginTop: 8,
+                paddingTop: 16,
+                borderTopWidth: 1,
+                borderTopColor: `${colors.text}10`,
+              }}
+            >
+              <Ionicons name="notifications-outline" size={18} color={colors.primary} style={{ marginTop: 1, marginRight: 10 }} />
+              <Text style={{ color: colors.textSecondary, flex: 1, lineHeight: 20, fontSize: 13 }}>
+                This can take a few minutes. You can leave this screen — we&apos;ll send you a notification when your
+                transactions are ready to review.
+              </Text>
+            </View>
           </AnimatedScreenSection>
         ) : statementImport.status === 'failed' ? (
           <AnimatedScreenSection
@@ -248,14 +324,20 @@ export default function StatementImportDetailsScreen() {
                 }}
               >
                 <Text style={{ color: colors.text, fontSize: 20, fontWeight: '700', marginBottom: 8 }}>
-                  {isImported ? 'Import complete' : 'Statement scanned successfully'}
+                  {isImported
+                    ? 'Import complete'
+                    : hasNoRows
+                      ? 'No transactions found'
+                      : 'Statement scanned successfully'}
                 </Text>
                 <Text style={{ color: colors.textSecondary, lineHeight: 22 }}>
                   {isImported
                     ? 'Your approved transactions are now part of your SEFA records.'
-                    : hasOnlyDuplicates
-                      ? 'All transactions in this statement may already exist in SEFA.'
-                      : 'Review the summary before deciding what to import.'}
+                    : hasNoRows
+                      ? 'No transaction rows were detected. Try another statement or upload a clearer file.'
+                      : hasOnlyDuplicates
+                        ? 'All transactions in this statement may already exist in SEFA.'
+                        : 'Review the summary before deciding what to import.'}
                 </Text>
               </View>
             </AnimatedScreenSection>
@@ -271,17 +353,19 @@ export default function StatementImportDetailsScreen() {
 
             {!isImported ? (
               <AnimatedScreenSection index={2}>
+                {!hasNoRows && (
+                  <Button
+                    title="Review Transactions"
+                    onPress={() => router.push(`/settings/statement-import/${statementImport.id}/rows` as any)}
+                    fullWidth
+                  />
+                )}
                 <Button
-                  title="Review Transactions"
-                  onPress={() => router.push(`/settings/statement-import/${statementImport.id}/rows` as any)}
-                  fullWidth
-                />
-                <Button
-                  title="Cancel Import"
-                  onPress={handleCancel}
+                  title={hasNoRows ? 'Upload Another Statement' : 'Cancel Import'}
+                  onPress={hasNoRows ? () => router.replace('/settings/statement-import') : handleCancel}
                   variant="outline"
                   fullWidth
-                  className="mt-3"
+                  className={hasNoRows ? undefined : 'mt-3'}
                   loading={deleteImport.isPending}
                 />
               </AnimatedScreenSection>

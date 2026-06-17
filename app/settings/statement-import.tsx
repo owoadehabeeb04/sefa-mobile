@@ -126,20 +126,32 @@ export default function StatementImportScreen() {
           </View>
 
           <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 6 }}>
-            {activeImport ? 'Import in progress' : 'Upload a bank statement'}
+            Upload a bank statement
           </Text>
           <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 20, marginBottom: 18 }}>
             {activeImport
-              ? 'You have an active import. Tap below to review and finish it.'
+              ? 'You can start a new statement anytime, even while another one is still processing.'
               : 'Upload a PDF and SEFA will extract transactions for you to review before saving.'}
           </Text>
 
+          {/* Uploading a fresh statement is always available — each upload is its
+              own import, so a new one can start while another is in progress. */}
           <Button
-            title={activeImport ? 'Continue Import' : 'Upload PDF Statement'}
-            onPress={activeImport ? () => openImport(activeImport.id) : handlePickFile}
+            title="Upload PDF Statement"
+            onPress={handlePickFile}
             fullWidth
             loading={uploadStatement.isPending}
           />
+
+          {activeImport ? (
+            <Button
+              title={`Continue current import · ${statusLabel(activeImport.status)}`}
+              onPress={() => openImport(activeImport.id)}
+              variant="outline"
+              fullWidth
+              className="mt-3"
+            />
+          ) : null}
 
           <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 12, textAlign: 'center' }}>
             PDF only · You review everything before it saves

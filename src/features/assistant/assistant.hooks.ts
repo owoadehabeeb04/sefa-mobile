@@ -3,8 +3,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   archiveAssistantChat,
+  cancelAssistantAction,
   cancelAssistantMessageRequest,
+  confirmAssistantAction,
   createAssistantChat,
+  editAssistantAction,
   editAssistantMessage,
   getAssistantChat,
   listAssistantChats,
@@ -216,6 +219,45 @@ export const useArchiveAssistantChat = (chatId: string) => {
     mutationFn: () => archiveAssistantChat(chatId),
     onSuccess: () => {
       queryClient.removeQueries({ queryKey: assistantChatQueryKey(chatId) });
+      queryClient.invalidateQueries({ queryKey: assistantChatsQueryKey });
+    },
+  });
+};
+
+export const useConfirmAssistantAction = (chatId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (actionId: string) => confirmAssistantAction(actionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: assistantChatQueryKey(chatId) });
+      queryClient.invalidateQueries({ queryKey: assistantChatsQueryKey });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['income'] });
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+    },
+  });
+};
+
+export const useCancelAssistantAction = (chatId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (actionId: string) => cancelAssistantAction(actionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: assistantChatQueryKey(chatId) });
+      queryClient.invalidateQueries({ queryKey: assistantChatsQueryKey });
+    },
+  });
+};
+
+export const useEditAssistantAction = (chatId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ actionId, payload }: { actionId: string; payload: Record<string, any> }) =>
+      editAssistantAction(actionId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: assistantChatQueryKey(chatId) });
       queryClient.invalidateQueries({ queryKey: assistantChatsQueryKey });
     },
   });

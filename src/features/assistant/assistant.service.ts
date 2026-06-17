@@ -9,6 +9,7 @@ import type {
   AssistantChatSummary,
   AssistantChatsResponse,
   AssistantCreateChatResponse,
+  AssistantAction,
   AssistantMessage,
   AssistantMutationMessageResponse,
   AssistantSearchResponse,
@@ -68,6 +69,15 @@ const mapMessage = (raw: any): AssistantMessage => ({
     } : null,
     reason: raw.retrieval.reason ?? null,
   } : null,
+  actions: Array.isArray(raw.actions) ? raw.actions.map((action: any): AssistantAction => ({
+    actionId: action.actionId || action.id,
+    id: action.id || action.actionId,
+    actionType: action.actionType,
+    status: action.status,
+    confirmationMessage: action.confirmationMessage || '',
+    payload: action.payload || {},
+    missingFields: Array.isArray(action.missingFields) ? action.missingFields : [],
+  })).filter((action: AssistantAction) => Boolean(action.actionId)) : [],
   completedAt: raw.completedAt ?? null,
   createdAt: raw.createdAt,
   updatedAt: raw.updatedAt,
@@ -262,6 +272,30 @@ export const cancelAssistantMessageRequest = async (chatId: string, messageId: s
   }
 
   return response.data.data.assistantMessage ? mapMessage(response.data.data.assistantMessage) : null;
+};
+
+export const confirmAssistantAction = async (actionId: string) => {
+  const response = await api.post(`${API_ENDPOINTS.ASSISTANT.ACTIONS}/${actionId}/confirm`);
+  if (!response.data?.success) {
+    throw new Error(response.data?.error?.message || response.data?.message || 'Failed to confirm assistant action');
+  }
+  return response.data.data.action;
+};
+
+export const cancelAssistantAction = async (actionId: string) => {
+  const response = await api.post(`${API_ENDPOINTS.ASSISTANT.ACTIONS}/${actionId}/cancel`);
+  if (!response.data?.success) {
+    throw new Error(response.data?.error?.message || response.data?.message || 'Failed to cancel assistant action');
+  }
+  return response.data.data.action;
+};
+
+export const editAssistantAction = async (actionId: string, payload: Record<string, any>) => {
+  const response = await api.post(`${API_ENDPOINTS.ASSISTANT.ACTIONS}/${actionId}/edit`, payload);
+  if (!response.data?.success) {
+    throw new Error(response.data?.error?.message || response.data?.message || 'Failed to edit assistant action');
+  }
+  return response.data.data.action;
 };
 
 export const updateAssistantChat = async (chatId: string, payload: { title?: string; archived?: boolean }) => {
