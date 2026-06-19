@@ -14,6 +14,8 @@ import { AnimatedScreenSection, FadeUp } from '@/src/components/motion';
 
 const colors = Colors.light;
 
+
+
 export default function ClearDataScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
