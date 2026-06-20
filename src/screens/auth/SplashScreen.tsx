@@ -4,7 +4,7 @@
  * Shows logo briefly before navigating
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Animated, Text, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SvgXml } from 'react-native-svg';
@@ -12,11 +12,9 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth.store';
 import { useCurrentUser } from '@/features/auth/auth.hooks';
-import { useOnboardingStatus } from '@/features/onboarding/onboarding.hooks';
 import { resolveAuthenticatedRoute } from '@/features/auth/auth-routing';
+import { getLastProtectedRoute } from '@/features/security/lastRoute.service';
 import { sefaLogoSvg } from '@/assets/illustrations';
-
-const MIN_SPLASH_DURATION_MS = 1800; // brief minimum so launch feels responsive
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -24,11 +22,11 @@ export default function SplashScreen() {
   const colors = Colors[colorScheme];
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
-  const mountTimeRef = useRef<number>(Date.now());
+  const lastRouteRef = useRef<string | null>(null);
+  const [isLastRouteReady, setIsLastRouteReady] = useState(false);
   
   const { initializeAuth, isLoading: authLoading, isAuthenticated, setUser, clearAuth } = useAuthStore();
   const { data: userData, isLoading: userLoading, isError } = useCurrentUser();
-  const { data: onboardingData, isLoading: onboardingLoading } = useOnboardingStatus();
 
   // Animate logo in on mount (so it actually appears)
   useEffect(() => {
@@ -49,7 +47,13 @@ export default function SplashScreen() {
 
   // Initialize auth on mount
   useEffect(() => {
-    initializeAuth();
+    void Promise.all([
+      initializeAuth(),
+      getLastProtectedRoute().then((route) => {
+        lastRouteRef.current = route;
+        setIsLastRouteReady(true);
+      }),
+    ]);
   }, [initializeAuth]);
 
   // Update user in store when fetched
@@ -66,26 +70,19 @@ export default function SplashScreen() {
     }
   }, [isError, isAuthenticated, clearAuth]);
 
-  // Navigate only after auth/user are ready AND the brief splash window has passed
+  // Route as soon as session validation finishes; the native splash already covers startup.
   useEffect(() => {
-    if (authLoading || userLoading || onboardingLoading) return;
+    if (authLoading || userLoading || !isLastRouteReady) return;
 
-    const elapsed = Date.now() - mountTimeRef.current;
-    const waitMs = Math.max(0, MIN_SPLASH_DURATION_MS - elapsed);
+    if (isError || !isAuthenticated || !userData?.data?.user) {
+      router.replace('/(welcome)');
+      return;
+    }
 
-    const timer = setTimeout(() => {
-      if (isError || !isAuthenticated || !userData?.data?.user) {
-        router.replace('/(welcome)');
-        return;
-      }
-
-      router.replace(
-        resolveAuthenticatedRoute(userData.data.user, onboardingData?.data || null)
-      );
-    }, waitMs);
-
-    return () => clearTimeout(timer);
-  }, [authLoading, userLoading, onboardingLoading, isAuthenticated, userData, onboardingData, isError, router]);
+    const fallbackRoute = resolveAuthenticatedRoute(userData.data.user, null);
+    const restoredRoute = userData.data.user.onboardingCompleted ? lastRouteRef.current : null;
+    router.replace((restoredRoute || fallbackRoute) as any);
+  }, [authLoading, userLoading, isLastRouteReady, isAuthenticated, userData, isError, router]);
 
   return (
     <View

@@ -10,6 +10,8 @@ const LEGACY_LAN_CANDIDATES = [
   'http://192.168.181.103:3000/api/v1',
 ];
 
+export const CONFIGURED_API_BASE_URL = process.env.EXPO_PUBLIC_API_URL?.trim() || null;
+
 const stripPort = (value: string): string => value.replace(/:\d+$/, '').replace(/^\[(.*)\]$/, '$1');
 
 const extractHost = (value?: string | null): string | null => {
@@ -53,7 +55,7 @@ const unique = (values: (string | null | undefined)[]): string[] =>
 
 // Candidate base URLs in priority order (first reachable one wins)
 export const API_BASE_URL_CANDIDATES = unique([
-  process.env.EXPO_PUBLIC_API_URL,          // Manual override when targeting a remote/staging API
+  CONFIGURED_API_BASE_URL,                  // Manual override when targeting a remote/staging API
   getAutoDetectedApiBaseUrl(),              // Expo Go / dev build host -> backend on same machine
   Platform.OS === 'android' ? 'http://10.0.2.2:3000/api/v1' : null, // Android emulator
   'http://127.0.0.1:3000/api/v1',           // iOS simulator / local machine

@@ -177,6 +177,9 @@ export interface AssistantChatEvent {
   assistantMessageId?: string;
   stage?: AssistantActivityStage;
   label?: string;
+  delta?: string;
+  fullText?: string;
+  isFinal?: boolean;
   chat?: AssistantChatSummary;
   message?: AssistantMessage;
   action?: AssistantAction;

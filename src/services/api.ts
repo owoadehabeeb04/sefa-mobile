@@ -4,7 +4,7 @@
 
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig, isAxiosError } from 'axios';
 import * as SecureStore from '@/utils/secureStore';
-import { API_CONFIG, API_BASE_URL_CANDIDATES } from '../config/api';
+import { API_CONFIG, API_BASE_URL_CANDIDATES, CONFIGURED_API_BASE_URL } from '../config/api';
 
 const GENERIC_ERROR_MESSAGE = 'An error occurred';
 const AUTH_REFRESH_URL = '/auth/refresh-token';
@@ -20,6 +20,8 @@ const AUTH_BYPASS_REFRESH_PATHS = [
   AUTH_REFRESH_URL,
 ];
 let authFailureHandler: (() => Promise<void> | void) | null = null;
+let cachedAccessToken: string | null | undefined;
+let cachedRefreshToken: string | null | undefined;
 
 const toUserSafeError = (error: unknown): Error => {
   if (isAxiosError(error)) {
@@ -68,6 +70,15 @@ let discoveryDone = false;
 export const discoverBaseURL = async (): Promise<string> => {
   if (discoveryDone) return api.defaults.baseURL!;
 
+  // A build-time URL is intentional and does not need a blocking health probe
+  // before the first real API request.
+  if (CONFIGURED_API_BASE_URL) {
+    api.defaults.baseURL = CONFIGURED_API_BASE_URL;
+    API_CONFIG.BASE_URL = CONFIGURED_API_BASE_URL;
+    discoveryDone = true;
+    return CONFIGURED_API_BASE_URL;
+  }
+
   for (const candidate of API_BASE_URL_CANDIDATES) {
     // Health endpoint is at the root (strip /api/v1)
     const root = candidate.replace(/\/api\/v1\/?$/, '');
@@ -96,8 +107,10 @@ const discoveryPromise = discoverBaseURL();
  * Get stored access token
  */
 export const getStoredToken = async (): Promise<string | null> => {
+  if (cachedAccessToken !== undefined) return cachedAccessToken;
   try {
-    return await SecureStore.getItemAsync(TOKEN_KEY);
+    cachedAccessToken = await SecureStore.getItemAsync(TOKEN_KEY);
+    return cachedAccessToken;
   } catch (error) {
     console.error('Error getting token:', error);
     return null;
@@ -108,8 +121,10 @@ export const getStoredToken = async (): Promise<string | null> => {
  * Get stored refresh token
  */
 export const getStoredRefreshToken = async (): Promise<string | null> => {
+  if (cachedRefreshToken !== undefined) return cachedRefreshToken;
   try {
-    return await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+    cachedRefreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+    return cachedRefreshToken;
   } catch (error) {
     console.error('Error getting refresh token:', error);
     return null;
@@ -131,6 +146,8 @@ export const storeTokens = async (token: string, refreshToken: string): Promise<
 
     await SecureStore.setItemAsync(TOKEN_KEY, token);
     await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
+    cachedAccessToken = token;
+    cachedRefreshToken = refreshToken;
   } catch (error) {
     console.error('Error storing tokens:', error);
     throw error;
@@ -144,6 +161,8 @@ export const clearTokens = async (): Promise<void> => {
   try {
     await SecureStore.deleteItemAsync(TOKEN_KEY);
     await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+    cachedAccessToken = null;
+    cachedRefreshToken = null;
   } catch (error) {
     console.error('Error clearing tokens:', error);
   }
@@ -204,6 +223,7 @@ api.interceptors.response.use(
         
         // Store new token
         await SecureStore.setItemAsync(TOKEN_KEY, token);
+        cachedAccessToken = token;
 
         // Retry original request with new token
         if (originalRequest.headers) {

@@ -185,7 +185,7 @@ export const openAssistantSocketSession = async (
     try {
       const parsed = JSON.parse(String(event.data || '{}'));
       handlers.onEvent(parsed);
-    } catch (_error) {
+    } catch {
       handlers.onError?.(new Error('Invalid assistant websocket payload'));
     }
   };
@@ -317,17 +317,21 @@ type StreamHandlers = {
 };
 
 const parseSsePayload = (chunk: string) => {
-  const eventMatch = chunk.match(/event:\s*([^\n]+)/);
-  const dataMatch = chunk.match(/data:\s*([\s\S]+)/);
+  const normalized = chunk.replace(/\r\n/g, '\n');
+  const eventMatch = normalized.match(/(?:^|\n)event:\s*([^\n]+)/);
+  const dataLines = normalized
+    .split('\n')
+    .filter((line) => line.startsWith('data:'))
+    .map((line) => line.slice(5).trimStart());
 
-  if (!eventMatch || !dataMatch) {
+  if (!eventMatch || !dataLines.length) {
     return null;
   }
 
   try {
     return {
       type: eventMatch[1].trim(),
-      payload: JSON.parse(dataMatch[1].trim()),
+      payload: JSON.parse(dataLines.join('\n').trim()),
     };
   } catch {
     return null;
@@ -338,45 +342,60 @@ export const subscribeToAssistantChat = async (
   chatId: string,
   handlers: StreamHandlers,
 ): Promise<() => void> => {
-  const token = await getStoredToken();
   const controller = new AbortController();
+  let reconnectAttempt = 0;
+
+  const waitForReconnect = () => new Promise<void>((resolve) => {
+    const timeout = setTimeout(resolve, Math.min(1000 * (2 ** reconnectAttempt), 10000));
+    controller.signal.addEventListener('abort', () => {
+      clearTimeout(timeout);
+      resolve();
+    }, { once: true });
+  });
 
   const run = async () => {
-    try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}${API_ENDPOINTS.ASSISTANT.CHATS}/${chatId}/stream`, {
-        method: 'GET',
-        headers: {
-          Accept: 'text/event-stream',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        signal: controller.signal,
-      });
+    while (!controller.signal.aborted) {
+      try {
+        const token = await getStoredToken();
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_ENDPOINTS.ASSISTANT.CHATS}/${chatId}/stream`, {
+          method: 'GET',
+          headers: {
+            Accept: 'text/event-stream',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          signal: controller.signal,
+        });
 
-      if (!response.ok || !response.body) {
-        throw new Error('Assistant live updates are unavailable right now.');
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder('utf-8');
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        const parts = buffer.split('\n\n');
-        buffer = parts.pop() || '';
-
-        for (const part of parts) {
-          const parsed = parseSsePayload(part);
-          if (!parsed) continue;
-          handlers.onEvent(parsed.payload as AssistantChatEvent);
+        if (!response.ok || !response.body) {
+          throw new Error('Assistant live updates are unavailable right now.');
         }
+
+        reconnectAttempt = 0;
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (!controller.signal.aborted) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
+
+          const parts = buffer.split('\n\n');
+          buffer = parts.pop() || '';
+
+          for (const part of parts) {
+            const parsed = parseSsePayload(part);
+            if (!parsed) continue;
+            handlers.onEvent(parsed.payload as AssistantChatEvent);
+          }
+        }
+      } catch (error: any) {
+        if (controller.signal.aborted) return;
+        handlers.onError?.(error instanceof Error ? error : new Error('Assistant stream failed'));
       }
-    } catch (error: any) {
-      if (controller.signal.aborted) return;
-      handlers.onError?.(error instanceof Error ? error : new Error('Assistant stream failed'));
+
+      reconnectAttempt += 1;
+      await waitForReconnect();
     }
   };
 

@@ -33,7 +33,11 @@ import {
   useRegenerateAssistantMessage,
   useRetryAssistantMessage,
 } from '@/features/assistant/assistant.hooks';
-import { openAssistantSocketSession } from '@/features/assistant/assistant.service';
+import {
+  createAssistantChat,
+  sendAssistantMessage,
+  subscribeToAssistantChat,
+} from '@/features/assistant/assistant.service';
 import type { AssistantAction, AssistantMessage } from '@/features/assistant/assistant.types';
 import { AssistantMessageBubble } from '@/features/assistant/components/AssistantMessageBubble';
 
@@ -133,10 +137,7 @@ export default function AssistantChatScreen() {
   const queryClient = useQueryClient();
   const { chatId: routeChatId, seed } = useLocalSearchParams<{ chatId: string; seed?: string }>();
   const scrollRef = useRef<ScrollView>(null);
-  const sessionRef = useRef<Awaited<ReturnType<typeof openAssistantSocketSession>> | null>(null);
-  const composerMirrorRef = useRef('');
   const seededRef = useRef(false);
-  const optimisticMessagesRef = useRef<AssistantMessage[]>([]);
 
   const [activeChatId, setActiveChatId] = useState<string | null>(
     routeChatId && routeChatId !== 'new' ? routeChatId : null,
@@ -147,6 +148,7 @@ export default function AssistantChatScreen() {
   const [actionEditDraft, setActionEditDraft] = useState<ActionEditDraft | null>(null);
   const [optimisticMessages, setOptimisticMessages] = useState<AssistantMessage[]>([]);
   const [activityByMessageId, setActivityByMessageId] = useState<Record<string, string>>({});
+  const [isSending, setIsSending] = useState(false);
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({
     visible: false,
     message: '',
@@ -163,12 +165,7 @@ export default function AssistantChatScreen() {
   const cancelAction = useCancelAssistantAction(activeChatId || '');
   const editAction = useEditAssistantAction(activeChatId || '');
 
-  useEffect(() => {
-    optimisticMessagesRef.current = optimisticMessages;
-  }, [optimisticMessages]);
-
   const applyOptimisticMessages = (nextMessages: AssistantMessage[]) => {
-    optimisticMessagesRef.current = nextMessages;
     setOptimisticMessages(nextMessages);
   };
 
@@ -182,148 +179,81 @@ export default function AssistantChatScreen() {
     setActivityByMessageId({});
     if (!seed) {
       setDraft('');
-      composerMirrorRef.current = '';
     }
   }, [routeChatId, seed]);
 
   useEffect(() => {
     let cancelled = false;
+    let unsubscribe: (() => void) | null = null;
 
-    openAssistantSocketSession(activeChatId, {
+    if (!activeChatId) return;
+
+    subscribeToAssistantChat(activeChatId, {
       onEvent: (event) => {
         if (cancelled) return;
 
-        if (event.type === 'chat.created' && event.chat) {
-          const nextChatId = event.chat.id || event.chat._id;
-          const eventMessages = [event.userMessage, event.assistantMessage].filter(Boolean) as AssistantMessage[];
-          const optimisticForChat = (eventMessages.length ? eventMessages : optimisticMessagesRef.current).map((message) => ({
-            ...message,
-            chatId: nextChatId,
-          }));
-          setActiveChatId(nextChatId);
-          queryClient.setQueryData(assistantChatQueryKey(nextChatId), (previous: any) => ({
-            chat: { ...(previous?.chat || {}), ...event.chat },
-            messages: optimisticForChat.reduce(
-              (acc: AssistantMessage[], message: AssistantMessage) => upsertMessage(acc, message),
-              previous?.messages || [],
-            ),
-          }));
-          queryClient.invalidateQueries({ queryKey: assistantChatQueryKey(nextChatId) });
+        if (event.chat) {
+          queryClient.setQueryData(assistantChatQueryKey(activeChatId), (previous: any) => previous ? ({
+            ...previous,
+            chat: { ...previous.chat, ...event.chat },
+          }) : previous);
           queryClient.invalidateQueries({ queryKey: assistantChatsQueryKey });
-          router.replace(`/assistant/${nextChatId}` as any);
-          return;
         }
 
-        if (event.type === 'message.saved') {
-          const nextChatId = event.chatId || activeChatId;
-          if (!nextChatId) return;
+        if (event.message) {
           applyOptimisticMessages([]);
-          queryClient.setQueryData(assistantChatQueryKey(nextChatId), (previous: any) => ({
-            chat: previous?.chat || {
-              id: nextChatId,
-              title: 'New chat',
-              titleSource: 'auto',
-              status: 'generating',
-              lastMessage: '',
-              lastMessageAt: new Date().toISOString(),
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
-            messages: [event.userMessage, event.assistantMessage].filter(Boolean).reduce(
-              (acc: AssistantMessage[], message: AssistantMessage) => upsertMessage(acc, message),
-              previous?.messages || [],
-            ),
-          }));
-          queryClient.invalidateQueries({ queryKey: assistantChatsQueryKey });
-          return;
+          queryClient.setQueryData(assistantChatQueryKey(activeChatId), (previous: any) => previous ? ({
+            ...previous,
+            messages: upsertMessage(previous.messages, event.message as AssistantMessage),
+          }) : previous);
+
+          if (['completed', 'failed', 'cancelled'].includes(event.message.status)) {
+            setActivityByMessageId((prev) => {
+              const next = { ...prev };
+              delete next[event.message!.id];
+              return next;
+            });
+          }
         }
 
-        if ((event.type === 'assistant.delta' || event.type === 'assistant.done') && event.assistantMessageId) {
-          const nextChatId = event.chatId || activeChatId;
-          if (!nextChatId) return;
-          queryClient.setQueryData(assistantChatQueryKey(nextChatId), (previous: any) => {
+        if (event.type === 'assistant.delta' && event.assistantMessageId) {
+          const assistantMessageId = event.assistantMessageId;
+          queryClient.setQueryData(assistantChatQueryKey(activeChatId), (previous: any) => {
             if (!previous) return previous;
-            const existing = previous.messages.find((message: AssistantMessage) => message.id === event.assistantMessageId);
+            const existing = previous.messages.find((message: AssistantMessage) => message.id === assistantMessageId);
             if (!existing) return previous;
             return {
               ...previous,
               messages: upsertMessage(previous.messages, {
                 ...existing,
                 content: event.fullText || existing.content,
-                status: event.isFinal ? 'completed' : 'streaming',
-                actions: Array.isArray(event.actions) ? event.actions : existing.actions,
-                sources: Array.isArray(event.sources) ? event.sources : existing.sources,
-                retrieval: event.retrieval ?? existing.retrieval,
-                completedAt: event.isFinal ? new Date().toISOString() : existing.completedAt,
+                status: 'streaming',
                 updatedAt: new Date().toISOString(),
               }),
             };
           });
-
-          if (event.type === 'assistant.done') {
-            setActivityByMessageId((prev) => {
-              const next = { ...prev };
-              delete next[event.assistantMessageId];
-              return next;
-            });
-            queryClient.invalidateQueries({ queryKey: assistantChatQueryKey(nextChatId) });
-            queryClient.invalidateQueries({ queryKey: assistantChatsQueryKey });
-          }
           return;
         }
 
         if (event.type === 'assistant.activity' && event.assistantMessageId) {
+          const assistantMessageId = event.assistantMessageId;
           if (event.stage === 'done') {
             setActivityByMessageId((prev) => {
               const next = { ...prev };
-              delete next[event.assistantMessageId];
+              delete next[assistantMessageId];
               return next;
             });
             return;
           }
           setActivityByMessageId((prev) => ({
             ...prev,
-            [event.assistantMessageId]: event.label || 'SEFA is working...',
+            [assistantMessageId]: event.label || 'SEFA is working...',
           }));
           return;
         }
 
-        if (event.type === 'assistant.cancelled' && event.assistantMessageId) {
-          const nextChatId = event.chatId || activeChatId;
-          if (!nextChatId) return;
-          queryClient.setQueryData(assistantChatQueryKey(nextChatId), (previous: any) => {
-            if (!previous) return previous;
-            const existing = previous.messages.find((message: AssistantMessage) => message.id === event.assistantMessageId);
-            if (!existing) return previous;
-            return {
-              ...previous,
-              messages: upsertMessage(previous.messages, {
-                ...existing,
-                status: 'cancelled',
-                completedAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              }),
-            };
-          });
-          queryClient.invalidateQueries({ queryKey: assistantChatsQueryKey });
-          setActivityByMessageId((prev) => {
-            const next = { ...prev };
-            delete next[event.assistantMessageId];
-            return next;
-          });
-          return;
-        }
-
-        if (event.type === 'assistant.error') {
-          queryClient.invalidateQueries({ queryKey: assistantChatsQueryKey });
-          setToast({ visible: true, message: event.message || 'Assistant request failed', type: 'error' });
-          return;
-        }
-
         if (typeof event.type === 'string' && event.type.startsWith('action.')) {
-          const nextChatId = event.chatId || activeChatId;
-          if (!nextChatId) return;
-          queryClient.invalidateQueries({ queryKey: assistantChatQueryKey(nextChatId) });
+          queryClient.invalidateQueries({ queryKey: assistantChatQueryKey(activeChatId) });
           queryClient.invalidateQueries({ queryKey: assistantChatsQueryKey });
         }
       },
@@ -331,18 +261,16 @@ export default function AssistantChatScreen() {
         if (cancelled) return;
         setToast({ visible: true, message: error.message, type: 'error' });
       },
-    }).then((session) => {
-      if (cancelled) { session.close(); return; }
-      sessionRef.current = session;
-      session.startSession({ chatId: activeChatId });
+    }).then((cleanup) => {
+      if (cancelled) { cleanup(); return; }
+      unsubscribe = cleanup;
     });
 
     return () => {
       cancelled = true;
-      sessionRef.current?.close();
-      sessionRef.current = null;
+      unsubscribe?.();
     };
-  }, [activeChatId, queryClient, router]);
+  }, [activeChatId, queryClient]);
 
   useEffect(() => {
     const seedText = typeof seed === 'string' ? seed.trim() : '';
@@ -351,7 +279,6 @@ export default function AssistantChatScreen() {
     setEditingMessage(null);
     applyOptimisticMessages([]);
     setDraft(seedText);
-    composerMirrorRef.current = seedText;
   }, [seed]);
 
   const messages = useMemo(() => data?.messages || [], [data?.messages]);
@@ -403,16 +330,36 @@ export default function AssistantChatScreen() {
         setEditingMessage(null);
       } else {
         applyOptimisticMessages(buildOptimisticConversation(content, activeChatId));
-        sessionRef.current?.commitInput(content);
+        setIsSending(true);
+        if (activeChatId) {
+          const result = await sendAssistantMessage(activeChatId, content);
+          queryClient.setQueryData(assistantChatQueryKey(activeChatId), (previous: any) => previous ? ({
+            ...previous,
+            messages: [result.userMessage, result.assistantMessage].filter(Boolean).reduce(
+              (acc: AssistantMessage[], message) => upsertMessage(acc, message as AssistantMessage),
+              previous.messages,
+            ),
+          }) : previous);
+          applyOptimisticMessages([]);
+        } else {
+          const result = await createAssistantChat(content);
+          setActiveChatId(result.chat.id);
+          applyOptimisticMessages([]);
+          queryClient.setQueryData(assistantChatQueryKey(result.chat.id), result);
+          queryClient.invalidateQueries({ queryKey: assistantChatsQueryKey });
+          router.replace(`/assistant/${result.chat.id}` as any);
+        }
       }
       setDraft('');
-      composerMirrorRef.current = '';
     } catch (error: any) {
+      applyOptimisticMessages([]);
       setToast({
         visible: true,
         message: error?.message || 'Failed to send message',
         type: 'error',
       });
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -420,7 +367,6 @@ export default function AssistantChatScreen() {
     setEditingAction(null);
     setEditingMessage(message);
     setDraft(message.content);
-    composerMirrorRef.current = message.content;
   };
 
   const beginActionEdit = (action: AssistantAction) => {
@@ -514,11 +460,7 @@ export default function AssistantChatScreen() {
 
   const handleCancelResponse = async (message: AssistantMessage) => {
     try {
-      if (sessionRef.current) {
-        sessionRef.current.cancelAssistant(message.id);
-      } else {
-        await cancelMessage.mutateAsync(message.id);
-      }
+      await cancelMessage.mutateAsync(message.id);
     } catch (error: any) {
       setToast({ visible: true, message: error?.message || 'Failed to cancel', type: 'error' });
     }
@@ -560,7 +502,7 @@ export default function AssistantChatScreen() {
     );
   }
 
-  const sendDisabled = (!hasGenerating && !draft.trim()) || editMessage.isPending || cancelMessage.isPending;
+  const sendDisabled = (!hasGenerating && !draft.trim()) || isSending || editMessage.isPending || cancelMessage.isPending;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -900,7 +842,6 @@ export default function AssistantChatScreen() {
                 onPress={() => {
                   setEditingMessage(null);
                   setDraft('');
-                  composerMirrorRef.current = '';
                 }}
               >
                 <Ionicons name="close" size={18} color={colors.textSecondary} />
@@ -924,36 +865,7 @@ export default function AssistantChatScreen() {
           >
             <TextInput
               value={draft}
-              onChangeText={(value) => {
-                setDraft(value);
-
-                if (editingMessage) {
-                  composerMirrorRef.current = value;
-                  return;
-                }
-
-                const previous = composerMirrorRef.current;
-                if (!sessionRef.current) {
-                  composerMirrorRef.current = value;
-                  return;
-                }
-
-                if (!value) {
-                  sessionRef.current.cancelInput();
-                  composerMirrorRef.current = '';
-                  return;
-                }
-
-                if (value.startsWith(previous)) {
-                  const suffix = value.slice(previous.length);
-                  if (suffix) sessionRef.current.appendInput(suffix);
-                } else {
-                  sessionRef.current.cancelInput();
-                  sessionRef.current.appendInput(value);
-                }
-
-                composerMirrorRef.current = value;
-              }}
+              onChangeText={setDraft}
               placeholder={editingMessage ? 'Edit your message...' : 'Message SEFA...'}
               placeholderTextColor={colors.textTertiary}
               multiline

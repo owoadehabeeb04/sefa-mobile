@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useSegments } from 'expo-router';
+import { usePathname, useSegments } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Colors } from '@/constants/theme';
@@ -19,6 +19,7 @@ import {
 } from '@/features/security/appLock.service';
 import { useAppLockStore } from '@/store/appLock.store';
 import { useAuthStore } from '@/store/auth.store';
+import { saveLastProtectedRoute } from '@/features/security/lastRoute.service';
 import { Button } from '@/src/components/common/Button';
 import { PinCodeInput } from './PinCodeInput';
 
@@ -58,6 +59,7 @@ export const AppUnlockGate: React.FC = () => {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const segments = useSegments();
+  const pathname = usePathname();
   const firstSegment = String(segments[0] || '');
   const isProtectedRoute = !UNPROTECTED_SEGMENTS.has(firstSegment);
 
@@ -128,6 +130,12 @@ export const AppUnlockGate: React.FC = () => {
   }, [didRestoreSession, isAuthenticated, isProtectedRoute, maybeLockOnLaunch]);
 
   useEffect(() => {
+    if (isAuthenticated && isProtectedRoute) {
+      void saveLastProtectedRoute(pathname);
+    }
+  }, [isAuthenticated, isProtectedRoute, pathname]);
+
+  useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'active') {
         maybeLockOnForeground(isAuthenticated);
@@ -135,6 +143,9 @@ export const AppUnlockGate: React.FC = () => {
       }
 
       if (nextState === 'background' || nextState === 'inactive') {
+        if (isAuthenticated && isProtectedRoute) {
+          void saveLastProtectedRoute(pathname);
+        }
         noteBackgrounded();
       }
     });
@@ -142,7 +153,7 @@ export const AppUnlockGate: React.FC = () => {
     return () => {
       subscription.remove();
     };
-  }, [isAuthenticated, maybeLockOnForeground, noteBackgrounded]);
+  }, [isAuthenticated, isProtectedRoute, maybeLockOnForeground, noteBackgrounded, pathname]);
 
   useEffect(() => {
     if (!requestKey) {

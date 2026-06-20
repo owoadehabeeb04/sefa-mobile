@@ -11,6 +11,7 @@ import {
   registerAuthFailureHandler,
 } from '@/services/api';
 import type { User } from '@/features/auth/auth.types';
+import { clearLastProtectedRoute } from '@/features/security/lastRoute.service';
 
 interface AuthState {
   user: User | null;
@@ -104,7 +105,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
-    await clearTokens();
+    await Promise.all([clearTokens(), clearLastProtectedRoute()]);
     set({
       user: null,
       token: null,
@@ -116,7 +117,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   clearAuth: async () => {
-    await clearTokens();
+    await Promise.all([clearTokens(), clearLastProtectedRoute()]);
     set({
       user: null,
       token: null,
