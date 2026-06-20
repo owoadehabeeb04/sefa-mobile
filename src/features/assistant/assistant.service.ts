@@ -1,3 +1,5 @@
+import EventSource from 'react-native-sse';
+
 import api, { getStoredToken } from '@/services/api';
 import { API_CONFIG, API_ENDPOINTS } from '@/config/api';
 
@@ -316,92 +318,64 @@ type StreamHandlers = {
   onError?: (error: Error) => void;
 };
 
-const parseSsePayload = (chunk: string) => {
-  const normalized = chunk.replace(/\r\n/g, '\n');
-  const eventMatch = normalized.match(/(?:^|\n)event:\s*([^\n]+)/);
-  const dataLines = normalized
-    .split('\n')
-    .filter((line) => line.startsWith('data:'))
-    .map((line) => line.slice(5).trimStart());
-
-  if (!eventMatch || !dataLines.length) {
-    return null;
-  }
-
-  try {
-    return {
-      type: eventMatch[1].trim(),
-      payload: JSON.parse(dataLines.join('\n').trim()),
-    };
-  } catch {
-    return null;
-  }
-};
+// All named SSE events the backend publishes on the assistant chat stream. The
+// standard browser EventSource can't send the Authorization header this endpoint
+// needs, so we use react-native-sse, which supports custom headers, named events,
+// and automatic reconnection.
+const ASSISTANT_STREAM_EVENTS = [
+  'ready',
+  'message.created',
+  'message.updated',
+  'chat.updated',
+  'assistant.activity',
+  'assistant.delta',
+  'confirmation.required',
+  'missing_fields.required',
+  'intent.detected',
+  'action.completed',
+  'action.cancelled',
+  'action.updated',
+] as const;
 
 export const subscribeToAssistantChat = async (
   chatId: string,
   handlers: StreamHandlers,
 ): Promise<() => void> => {
-  const controller = new AbortController();
-  let reconnectAttempt = 0;
+  const token = await getStoredToken();
 
-  const waitForReconnect = () => new Promise<void>((resolve) => {
-    const timeout = setTimeout(resolve, Math.min(1000 * (2 ** reconnectAttempt), 10000));
-    controller.signal.addEventListener('abort', () => {
-      clearTimeout(timeout);
-      resolve();
-    }, { once: true });
-  });
+  const es = new EventSource<(typeof ASSISTANT_STREAM_EVENTS)[number]>(
+    `${API_CONFIG.BASE_URL}${API_ENDPOINTS.ASSISTANT.CHATS}/${chatId}/stream`,
+    {
+      headers: {
+        Accept: 'text/event-stream',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      // Long-lived stream: don't let the request time out on its own, and let the
+      // library reconnect (with this delay) if the connection drops.
+      timeout: 0,
+      pollingInterval: 5000,
+    },
+  );
 
-  const run = async () => {
-    while (!controller.signal.aborted) {
-      try {
-        const token = await getStoredToken();
-        const response = await fetch(`${API_CONFIG.BASE_URL}${API_ENDPOINTS.ASSISTANT.CHATS}/${chatId}/stream`, {
-          method: 'GET',
-          headers: {
-            Accept: 'text/event-stream',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          signal: controller.signal,
-        });
-
-        if (!response.ok || !response.body) {
-          throw new Error('Assistant live updates are unavailable right now.');
-        }
-
-        reconnectAttempt = 0;
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let buffer = '';
-
-        while (!controller.signal.aborted) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
-
-          const parts = buffer.split('\n\n');
-          buffer = parts.pop() || '';
-
-          for (const part of parts) {
-            const parsed = parseSsePayload(part);
-            if (!parsed) continue;
-            handlers.onEvent(parsed.payload as AssistantChatEvent);
-          }
-        }
-      } catch (error: any) {
-        if (controller.signal.aborted) return;
-        handlers.onError?.(error instanceof Error ? error : new Error('Assistant stream failed'));
-      }
-
-      reconnectAttempt += 1;
-      await waitForReconnect();
+  const forward = (event: { data?: string | null }) => {
+    if (!event?.data) return;
+    try {
+      handlers.onEvent(JSON.parse(event.data) as AssistantChatEvent);
+    } catch {
+      // Ignore keepalive comments and any malformed frame.
     }
   };
 
-  run();
+  ASSISTANT_STREAM_EVENTS.forEach((type) => es.addEventListener(type, forward as any));
+
+  es.addEventListener('error', (event: any) => {
+    if (event?.type === 'error' || event?.type === 'exception' || event?.type === 'timeout') {
+      handlers.onError?.(new Error(event?.message || 'Assistant stream failed'));
+    }
+  });
 
   return () => {
-    controller.abort();
+    es.removeAllEventListeners();
+    es.close();
   };
 };

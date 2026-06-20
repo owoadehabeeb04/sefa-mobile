@@ -4,6 +4,11 @@ import { Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
+const CELL_GAP = 10;
+const MAX_CELL_WIDTH = 56;
+// width : height ratio for each cell (slightly taller than wide).
+const CELL_ASPECT_RATIO = 0.82;
+
 interface PinCodeInputProps {
   value: string;
   onChangeText: (value: string) => void;
@@ -41,7 +46,9 @@ export const PinCodeInput: React.FC<PinCodeInputProps> = ({
       onPress={() => inputRef.current?.focus()}
       disabled={disabled}
     >
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}>
+      {/* Cells flex to share the available width, so the row always fits the
+          screen (small/narrow Android phones included) and caps on large ones. */}
+      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: CELL_GAP }}>
         {Array.from({ length }).map((_, index) => {
           const hasDigit = Boolean(value[index]);
 
@@ -49,8 +56,9 @@ export const PinCodeInput: React.FC<PinCodeInputProps> = ({
             <View
               key={index}
               style={{
-                width: 44,
-                height: 54,
+                flex: 1,
+                maxWidth: MAX_CELL_WIDTH,
+                aspectRatio: CELL_ASPECT_RATIO,
                 borderRadius: 14,
                 borderWidth: 1,
                 borderColor: hasDigit ? colors.primary : colors.border,

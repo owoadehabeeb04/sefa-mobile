@@ -90,6 +90,24 @@ export const useAssistantChatStream = (chatId?: string, enabled = true) => {
       onEvent: (event: AssistantChatEvent) => {
         if (cancelled) return;
 
+        // Token-level streaming: apply incremental deltas to the in-flight message
+        // without waiting for the periodic persisted `message.updated` snapshot.
+        if (event.type === 'assistant.delta' && event.assistantMessageId && typeof event.fullText === 'string') {
+          queryClient.setQueryData(assistantChatQueryKey(chatId), (previous: AssistantChatDetail | undefined) => {
+            if (!previous) return previous;
+            const index = previous.messages.findIndex((message) => message.id === event.assistantMessageId);
+            if (index === -1) return previous;
+            const messages = [...previous.messages];
+            messages[index] = {
+              ...messages[index],
+              content: event.fullText as string,
+              status: event.isFinal ? 'completed' : 'streaming',
+            };
+            return { ...previous, messages };
+          });
+          return;
+        }
+
         if (event.chat) {
           queryClient.setQueryData(assistantChatQueryKey(chatId), (previous: AssistantChatDetail | undefined) => {
             if (!previous) return previous;

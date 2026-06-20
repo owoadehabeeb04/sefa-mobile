@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
-import { ActivityIndicator, Text, View, useWindowDimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ChartEmptyState, InsightsDonutChart } from './insights.charts';
+import { MonthComparison } from './MonthComparison';
 import { useInsightsDashboard, useInsightsSummaryStream } from './dashboard.hooks';
 import type { InsightsVisualCategory } from './insights.types';
 import type {
@@ -392,6 +393,7 @@ export default function InsightsDashboard({ period }: { period?: string }) {
   const { width } = useWindowDimensions();
   const chartWidth = Math.max(Math.min(width - 88, 420), 240);
   const { data, isLoading, error } = useInsightsDashboard({ period });
+  const [showCompare, setShowCompare] = useState(false);
 
   if (isLoading) {
     return (
@@ -443,8 +445,26 @@ export default function InsightsDashboard({ period }: { period?: string }) {
         {snapshot.previousPeriod && snapshot.previousPeriod.expensesChangePercent != null && (
           <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 10 }}>
             Spending is {snapshot.previousPeriod.expensesChange >= 0 ? 'up' : 'down'}{' '}
-            {formatPercent(Math.abs(snapshot.previousPeriod.expensesChangePercent))} vs {snapshot.previousPeriod.periodLabel}.
+            {formatPercent(Math.abs(snapshot.previousPeriod.expensesChangePercent))} vs {snapshot.previousPeriod.periodLabel} (
+            {formatMoney(snapshot.previousPeriod.totalExpenses)} spent that month).
           </Text>
+        )}
+
+        <Pressable
+          onPress={() => setShowCompare((value) => !value)}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14 }}
+        >
+          <Ionicons name="git-compare-outline" size={16} color={colors.primary} />
+          <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>
+            {showCompare ? 'Hide month comparison' : 'Compare months'}
+          </Text>
+          <Ionicons name={showCompare ? 'chevron-up' : 'chevron-down'} size={14} color={colors.primary} />
+        </Pressable>
+
+        {showCompare && (
+          <View style={{ marginTop: 12 }}>
+            <MonthComparison />
+          </View>
         )}
       </Section>
 
