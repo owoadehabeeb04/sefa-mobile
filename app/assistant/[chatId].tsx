@@ -137,6 +137,7 @@ export default function AssistantChatScreen() {
   const queryClient = useQueryClient();
   const { chatId: routeChatId, seed } = useLocalSearchParams<{ chatId: string; seed?: string }>();
   const scrollRef = useRef<ScrollView>(null);
+  const composerInputRef = useRef<TextInput>(null);
   const seededRef = useRef(false);
 
   const [activeChatId, setActiveChatId] = useState<string | null>(
@@ -753,7 +754,11 @@ export default function AssistantChatScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
         {/* Minimal header */}
         <View
           style={{
@@ -789,7 +794,9 @@ export default function AssistantChatScreen() {
         {/* Messages */}
         <ScrollView
           ref={scrollRef}
+          style={{ flex: 1 }}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, gap: 12 }}
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {displayMessages.map((message) => (
@@ -820,6 +827,7 @@ export default function AssistantChatScreen() {
             paddingBottom: Platform.OS === 'ios' ? 8 : 12,
             borderTopWidth: 1,
             borderTopColor: colors.border,
+            flexShrink: 0,
           }}
         >
           {editingMessage && (
@@ -864,11 +872,14 @@ export default function AssistantChatScreen() {
             }}
           >
             <TextInput
+              ref={composerInputRef}
               value={draft}
               onChangeText={setDraft}
+              onPressIn={() => composerInputRef.current?.focus()}
               placeholder={editingMessage ? 'Edit your message...' : 'Message SEFA...'}
               placeholderTextColor={colors.textTertiary}
               multiline
+              showSoftInputOnFocus
               style={{
                 flex: 1,
                 maxHeight: 120,
