@@ -104,6 +104,7 @@ export default function AssistantIndexScreen() {
   const chats = useMemo(() => chatList?.chats || [], [chatList?.chats]);
   const searchedChats = useMemo(() => searchResults.data || [], [searchResults.data]);
   const isSearching = search.trim().length > 1;
+  const isSearchPending = isSearching && (searchResults.isDebouncing || searchResults.isFetching);
 
   const listItems = useMemo((): ListItem[] => {
     const source = isSearching ? searchedChats : chats;
@@ -197,17 +198,22 @@ export default function AssistantIndexScreen() {
           />
         ) : null}
 
-        <Text
-          style={{
-            flex: 1,
-            color: colors.text,
-            fontSize: 15,
-            fontWeight: '400',
-          }}
-          numberOfLines={1}
-        >
-          {chat.title}
-        </Text>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{ color: colors.text, fontSize: 15, fontWeight: '400' }}
+            numberOfLines={1}
+          >
+            {chat.title}
+          </Text>
+          {chat.matchingMessageSnippet ? (
+            <Text
+              style={{ color: colors.textTertiary, fontSize: 12, marginTop: 2 }}
+              numberOfLines={1}
+            >
+              {chat.matchingMessageSnippet}
+            </Text>
+          ) : null}
+        </View>
 
         <Text style={{ color: colors.textTertiary, fontSize: 13, marginLeft: 10 }}>
           {formatRelativeDate(chat.lastMessageAt)}
@@ -267,9 +273,13 @@ export default function AssistantIndexScreen() {
           onChangeText={setSearch}
           placeholder="Search"
           placeholderTextColor={colors.textTertiary}
+          accessibilityLabel="Search conversations"
+          autoCorrect={false}
+          returnKeyType="search"
+          maxLength={120}
           style={{ flex: 1, color: colors.text, fontSize: 15, padding: 0 }}
         />
-        {searchResults.isLoading ? (
+        {isSearchPending ? (
           <ActivityIndicator size="small" color={colors.textTertiary} />
         ) : search.length > 0 ? (
           <TouchableOpacity onPress={() => setSearch('')}>
@@ -282,15 +292,25 @@ export default function AssistantIndexScreen() {
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator size="small" color={colors.primary} />
         </View>
+      ) : isEmpty && isSearchPending ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="small" color={colors.primary} />
+        </View>
       ) : isEmpty ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
           <Ionicons name="chatbubble-outline" size={36} color={colors.textTertiary} />
           <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600', marginTop: 16, textAlign: 'center' }}>
-            {isSearching ? 'No matching chats' : 'No chats yet'}
+            {isSearching
+              ? searchResults.isError
+                ? 'Search is unavailable'
+                : 'No matching chats'
+              : 'No chats yet'}
           </Text>
           <Text style={{ color: colors.textSecondary, fontSize: 14, marginTop: 6, textAlign: 'center', lineHeight: 20 }}>
             {isSearching
-              ? 'Try a different phrase. SEFA searches inside message text too.'
+              ? searchResults.isError
+                ? 'Please check your connection and try again.'
+                : 'Try a different phrase. SEFA searches inside message text too.'
               : 'Start a conversation and SEFA will keep your history ready.'}
           </Text>
           {!isSearching && (
@@ -313,8 +333,8 @@ export default function AssistantIndexScreen() {
       ) : (
         <FlatList
           data={listItems}
-          keyExtractor={(item, index) =>
-            item.type === 'header' ? `header-${item.label}` : `chat-${item.chat.id}-${index}`
+          keyExtractor={(item) =>
+            item.type === 'header' ? `header-${item.label}` : `chat-${item.chat.id}`
           }
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
