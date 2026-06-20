@@ -20,7 +20,11 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "web": {
       "output": "static",
@@ -70,6 +74,12 @@
         "projectId": "dfa6b72a-6574-4a30-a1d6-21f100388276"
       }
     },
-    "owner": "habeebdev"
+    "owner": "habeebdev",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/dfa6b72a-6574-4a30-a1d6-21f100388276"
+    }
   }
 }

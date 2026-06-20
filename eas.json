@@ -10,7 +10,8 @@
       },
       "android": {
         "buildType": "apk"
-      }
+      },
+      "channel": "preview"
     },
     "production": {
       "env": {
@@ -22,7 +23,8 @@
       },
       "ios": {
         "image": "latest"
-      }
+      },
+      "channel": "production"
     }
   }
 }
