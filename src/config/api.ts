@@ -79,6 +79,7 @@ export const API_ENDPOINTS = {
     RESEND_PASSWORD_RESET_OTP: '/auth/resend-password-reset-otp',
     FORGOT_PASSWORD: '/auth/forgot-password',
     RESET_PASSWORD: '/auth/reset-password',
+    CHANGE_PASSWORD: '/auth/change-password',
     REFRESH_TOKEN: '/auth/refresh-token',
     LOGOUT: '/auth/logout',
     ME: '/auth/me',

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
@@ -49,12 +49,28 @@ export const useAssistantChat = (chatId?: string) => {
 };
 
 export const useAssistantChatSearch = (query: string) => {
-  return useQuery({
-    queryKey: assistantSearchQueryKey(query),
-    queryFn: () => searchAssistantChats(query),
-    enabled: query.trim().length > 1,
+  const normalizedQuery = useMemo(() => query.trim().replace(/\s+/g, ' '), [query]);
+  const [debouncedQuery, setDebouncedQuery] = useState(normalizedQuery);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(normalizedQuery), 300);
+    return () => clearTimeout(timer);
+  }, [normalizedQuery]);
+
+  const result = useQuery({
+    queryKey: assistantSearchQueryKey(debouncedQuery),
+    queryFn: ({ signal }) => searchAssistantChats(debouncedQuery, signal),
+    enabled: debouncedQuery.length > 1,
     staleTime: 15 * 1000,
+    gcTime: 5 * 60 * 1000,
+    placeholderData: (previousData) => previousData,
   });
+
+  return {
+    ...result,
+    debouncedQuery,
+    isDebouncing: normalizedQuery.length > 1 && normalizedQuery !== debouncedQuery,
+  };
 };
 
 const upsertMessage = (messages: AssistantChatDetail['messages'], nextMessage: AssistantChatDetail['messages'][number]) => {

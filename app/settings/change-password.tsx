@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -70,7 +70,7 @@ const PasswordField = ({
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { setAuth } = useAuthStore();
   const { requireVerification } = useSensitiveActionSecurity();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -117,51 +117,31 @@ export default function ChangePasswordScreen() {
 
     setIsLoading(true);
     try {
-      try {
-        await api.post(API_ENDPOINTS.AUTH.LOGIN, { email: user?.email, password: currentPassword });
-      } catch {
-        showError('Current password is incorrect');
-        setIsLoading(false);
-        return;
+      const response = await api.post(API_ENDPOINTS.AUTH.CHANGE_PASSWORD, {
+        currentPassword,
+        newPassword,
+      });
+
+      // Backend rotates tokens on password change. Persist the fresh ones so this
+      // device stays signed in (other sessions are invalidated server-side).
+      const data = response.data?.data;
+      if (data?.user && data?.token && data?.refreshToken) {
+        await setAuth(data.user, data.token, data.refreshToken);
       }
 
-      await api.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, { email: user?.email });
-
-      Alert.prompt(
-        'Enter OTP',
-        `We sent a 6-digit code to ${user?.email}`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Confirm',
-            onPress: async (otp: any) => {
-              if (!otp || otp.length !== 6) {
-                showError('Please enter a valid 6-digit OTP');
-                return;
-              }
-              try {
-                await api.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, {
-                  email: user?.email,
-                  otp: otp.trim(),
-                  newPassword,
-                });
-                setToastMessage('Password changed successfully');
-                setToastType('success');
-                setShowToast(true);
-                setCurrentPassword('');
-                setNewPassword('');
-                setConfirmPassword('');
-                setTimeout(() => router.back(), 1500);
-              } catch (error: any) {
-                showError(error?.response?.data?.message || 'Failed to change password');
-              }
-            },
-          },
-        ],
-        'plain-text'
-      );
+      setToastMessage('Password changed successfully');
+      setToastType('success');
+      setShowToast(true);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => router.back(), 1500);
     } catch (error: any) {
-      showError(error?.response?.data?.message || 'Failed to change password');
+      showError(
+        error?.response?.data?.error?.message ||
+          error?.response?.data?.message ||
+          'Failed to change password'
+      );
     } finally {
       setIsLoading(false);
     }

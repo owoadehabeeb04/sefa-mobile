@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -65,6 +65,12 @@ const getDateGroup = (value?: string | null): string => {
 
 const GROUP_ORDER = ['Today', 'Yesterday', 'Previous 7 Days', 'This Month', 'Older'];
 
+const getFirstName = (name?: string | null) => {
+  const normalizedName = String(name || '').trim();
+  if (!normalizedName || normalizedName.includes('@')) return 'there';
+  return normalizedName.split(/\s+/)[0];
+};
+
 type Chat = {
   id: string;
   title: string;
@@ -88,7 +94,6 @@ export default function AssistantTabScreen() {
 
   const [search, setSearch] = useState('');
   const [verified, setVerified] = useState(false);
-  const handledRef = useRef(false);
 
   const { data: chatList, isLoading, refetch } = useAssistantChats({ includeArchived: false });
   const searchResults = useAssistantChatSearch(search);
@@ -105,6 +110,7 @@ export default function AssistantTabScreen() {
   const chats = useMemo(() => chatList?.chats || [], [chatList?.chats]);
   const isSearching = search.trim().length > 1;
   const searchedChats = useMemo(() => searchResults.data || [], [searchResults.data]);
+  const isSearchPending = isSearching && (searchResults.isDebouncing || searchResults.isFetching);
 
   const listItems = useMemo((): ListItem[] => {
     const source = isSearching ? searchedChats : chats;
@@ -150,7 +156,7 @@ export default function AssistantTabScreen() {
     ]);
   };
 
-  const firstName = user?.name?.split(' ')[0] || 'there';
+  const firstName = getFirstName(user?.name);
 
   if (!verified) {
     return (
@@ -204,12 +210,12 @@ export default function AssistantTabScreen() {
           >
             {chat.title}
           </Text>
-          {chat.lastMessage ? (
+          {chat.matchingMessageSnippet || chat.lastMessage ? (
             <Text
               style={{ color: colors.textTertiary, fontSize: 13, marginTop: 2 }}
               numberOfLines={1}
             >
-              {chat.lastMessage}
+              {chat.matchingMessageSnippet || chat.lastMessage}
             </Text>
           ) : null}
         </View>
@@ -226,7 +232,7 @@ export default function AssistantTabScreen() {
     );
   };
 
-  const hasChats = listItems.length > 0;
+  const hasChats = chats.length > 0;
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.background }}>
@@ -290,9 +296,13 @@ export default function AssistantTabScreen() {
               onChangeText={setSearch}
               placeholder="Search conversations"
               placeholderTextColor={colors.textTertiary}
+              accessibilityLabel="Search conversations"
+              autoCorrect={false}
+              returnKeyType="search"
+              maxLength={120}
               style={{ flex: 1, color: colors.text, fontSize: 14, padding: 0 }}
             />
-            {searchResults.isLoading ? (
+            {isSearchPending ? (
               <ActivityIndicator size="small" color={colors.textTertiary} />
             ) : search.length > 0 ? (
               <TouchableOpacity onPress={() => setSearch('')}>
@@ -303,8 +313,8 @@ export default function AssistantTabScreen() {
 
           <FlatList
             data={listItems}
-            keyExtractor={(item, index) =>
-              item.type === 'header' ? `h-${item.label}` : `c-${item.chat.id}-${index}`
+            keyExtractor={(item) =>
+              item.type === 'header' ? `h-${item.label}` : `c-${item.chat.id}`
             }
             renderItem={renderItem}
             showsVerticalScrollIndicator={false}
@@ -314,9 +324,15 @@ export default function AssistantTabScreen() {
             ListEmptyComponent={
               isSearching ? (
                 <View style={{ paddingHorizontal: 20, paddingTop: 32, alignItems: 'center' }}>
-                  <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
-                    No conversations match "{search}"
-                  </Text>
+                  {isSearchPending ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: 'center' }}>
+                      {searchResults.isError
+                        ? 'Search is unavailable right now. Please try again.'
+                        : `No conversations match “${search.trim()}”`}
+                    </Text>
+                  )}
                 </View>
               ) : null
             }

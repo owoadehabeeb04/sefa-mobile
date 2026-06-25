@@ -110,9 +110,13 @@ export const listAssistantChats = async (params?: {
   };
 };
 
-export const searchAssistantChats = async (query: string): Promise<AssistantChatSummary[]> => {
+export const searchAssistantChats = async (
+  query: string,
+  signal?: AbortSignal,
+): Promise<AssistantChatSummary[]> => {
   const response = await api.get<AssistantSearchResponse>(API_ENDPOINTS.ASSISTANT.SEARCH, {
     params: { q: query },
+    signal,
   });
 
   return (response.data?.data?.chats || []).map(mapChat);

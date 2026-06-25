@@ -148,7 +148,7 @@ function TabButton({ label, active, onPress }: { label: string; active: boolean;
         paddingVertical: 9,
         borderRadius: 10,
         alignItems: 'center',
-        backgroundColor: active ? colors.text : 'transparent',
+        backgroundColor: active ? colors.primary : 'transparent',
       }}
     >
       <Text
